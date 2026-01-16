@@ -47,6 +47,17 @@ export class AppModule implements NestModule {
         { path: 'chatbot/health', method: RequestMethod.GET },
         { path: 'camera/all-data', method: RequestMethod.GET },
         { path: 'camera/total-space', method: RequestMethod.GET },
+        // Permitir acceso sin auth para desarrollo del sistema de parking
+        { path: 'camera', method: RequestMethod.ALL },
+        { path: 'camera/:id', method: RequestMethod.ALL },
+        { path: 'camera/:cameraId/parking-zones', method: RequestMethod.ALL },
+        { path: 'camera/parking-zones', method: RequestMethod.ALL },
+        { path: 'camera/parking-zones/:zoneId', method: RequestMethod.ALL },
+        { path: 'camera/parking-zones/bulk', method: RequestMethod.ALL },
+        { path: 'camera/:cameraId/parking-zones/all', method: RequestMethod.ALL },
+        { path: 'camera/:cameraId/parking-status', method: RequestMethod.ALL },
+        { path: 'camera/:cameraId/process-frame', method: RequestMethod.ALL },
+        { path: 'camera/:cameraId/stream', method: RequestMethod.ALL },
       )
       .forRoutes('*');
   }

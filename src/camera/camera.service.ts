@@ -1,70 +1,164 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { CreateCameraDto } from './dto/create-camera.dto';
 import { UpdateCameraDto } from './dto/update-camera.dto';
+import { CreateParkingZoneDto, UpdateParkingZoneDto, BulkCreateParkingZonesDto } from './dto/parking-zone.dto';
+import { Camera } from './entities/camera.entity';
+import { ParkingZone } from './entities/parking-zone.entity';
+import { ParkingDetectionService } from './parking-detection.service';
 
 @Injectable()
 export class CameraService {
-  create(createCameraDto: CreateCameraDto) {
-    return 'Esto crea';
+  constructor(
+    @InjectRepository(Camera)
+    private cameraRepository: Repository<Camera>,
+    @InjectRepository(ParkingZone)
+    private parkingZoneRepository: Repository<ParkingZone>,
+    private parkingDetectionService: ParkingDetectionService,
+  ) {}
+
+  async create(createCameraDto: CreateCameraDto): Promise<Camera> {
+    const camera = this.cameraRepository.create(createCameraDto);
+    return await this.cameraRepository.save(camera);
   }
 
-  findAll() {
-    return [
-      { count_cars: 36, empty_spaces: 2, time_video_sg: '00:00:01' },
-      { count_cars: 35, empty_spaces: 3, time_video_sg: '00:00:02' },
-      { count_cars: 35, empty_spaces: 3, time_video_sg: '00:00:03' },
-      { count_cars: 34, empty_spaces: 4, time_video_sg: '00:00:04' },
-      { count_cars: 34, empty_spaces: 4, time_video_sg: '00:00:05' },
-      { count_cars: 33, empty_spaces: 5, time_video_sg: '00:00:06' },
-      { count_cars: 33, empty_spaces: 5, time_video_sg: '00:00:07' },
-      { count_cars: 32, empty_spaces: 6, time_video_sg: '00:00:08' },
-      { count_cars: 32, empty_spaces: 6, time_video_sg: '00:00:09' },
-      { count_cars: 31, empty_spaces: 7, time_video_sg: '00:00:10' },
-      { count_cars: 31, empty_spaces: 7, time_video_sg: '00:00:11' },
-      { count_cars: 30, empty_spaces: 8, time_video_sg: '00:00:12' },
-      { count_cars: 30, empty_spaces: 8, time_video_sg: '00:00:13' },
-      { count_cars: 29, empty_spaces: 9, time_video_sg: '00:00:14' },
-      { count_cars: 29, empty_spaces: 9, time_video_sg: '00:00:15' },
-      { count_cars: 28, empty_spaces: 10, time_video_sg: '00:00:16' },
-      { count_cars: 28, empty_spaces: 10, time_video_sg: '00:00:17' },
-      { count_cars: 27, empty_spaces: 11, time_video_sg: '00:00:18' },
-      { count_cars: 27, empty_spaces: 11, time_video_sg: '00:00:19' },
-      { count_cars: 26, empty_spaces: 12, time_video_sg: '00:00:20' },
-      { count_cars: 26, empty_spaces: 12, time_video_sg: '00:00:21' },
-      { count_cars: 25, empty_spaces: 13, time_video_sg: '00:00:22' },
-      { count_cars: 25, empty_spaces: 13, time_video_sg: '00:00:23' },
-      { count_cars: 24, empty_spaces: 14, time_video_sg: '00:00:24' },
-      { count_cars: 24, empty_spaces: 14, time_video_sg: '00:00:25' },
-      { count_cars: 23, empty_spaces: 15, time_video_sg: '00:00:26' },
-      { count_cars: 23, empty_spaces: 15, time_video_sg: '00:00:27' },
-      { count_cars: 22, empty_spaces: 16, time_video_sg: '00:00:28' },
-      { count_cars: 22, empty_spaces: 16, time_video_sg: '00:00:29' },
-      { count_cars: 25, empty_spaces: 13, time_video_sg: '00:00:30' },
-      { count_cars: 25, empty_spaces: 13, time_video_sg: '00:00:31' },
-      { count_cars: 25, empty_spaces: 13, time_video_sg: '00:00:32' },
-      { count_cars: 25, empty_spaces: 13, time_video_sg: '00:00:33' },
-      { count_cars: 25, empty_spaces: 13, time_video_sg: '00:00:34' },
-      { count_cars: 25, empty_spaces: 13, time_video_sg: '00:00:35' },
-      { count_cars: 25, empty_spaces: 13, time_video_sg: '00:00:36' },
-      { count_cars: 25, empty_spaces: 13, time_video_sg: '00:00:37' },
-      { count_cars: 25, empty_spaces: 13, time_video_sg: '00:00:38' },
-      { count_cars: 25, empty_spaces: 13, time_video_sg: '00:00:39' },
-      { count_cars: 25, empty_spaces: 13, time_video_sg: '00:00:40' }
-    ];
+  async findAll(): Promise<Camera[]> {
+    return await this.cameraRepository.find({
+      relations: ['parkingZones'],
+    });
   }
 
-  findOne() {
-    return {
-      message: 'Space in parking',
-      total_count_space: 38
-    };
+  async findOne(id: string): Promise<Camera> {
+    const camera = await this.cameraRepository.findOne({
+      where: { id },
+      relations: ['parkingZones'],
+    });
+
+    if (!camera) {
+      throw new NotFoundException(`Camera with ID ${id} not found`);
+    }
+
+    return camera;
   }
 
-  update(id: number, updateCameraDto: UpdateCameraDto) {
-    return `This action updates a #${id} camera`;
+  async update(id: string, updateCameraDto: UpdateCameraDto): Promise<Camera> {
+    const camera = await this.findOne(id);
+    Object.assign(camera, updateCameraDto);
+    return await this.cameraRepository.save(camera);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} camera`;
+  async remove(id: string): Promise<void> {
+    const camera = await this.findOne(id);
+    await this.cameraRepository.remove(camera);
+  }
+
+  // ========== PARKING ZONES ==========
+
+  async createParkingZone(createParkingZoneDto: CreateParkingZoneDto): Promise<ParkingZone> {
+    const camera = await this.findOne(createParkingZoneDto.cameraId);
+    
+    const parkingZone = this.parkingZoneRepository.create({
+      ...createParkingZoneDto,
+      camera,
+    });
+
+    const saved = await this.parkingZoneRepository.save(parkingZone);
+    
+    // Actualizar total de espacios en la cámara
+    camera.total_parking = await this.parkingZoneRepository.count({
+      where: { camera: { id: camera.id } },
+    });
+    await this.cameraRepository.save(camera);
+
+    // Sincronizar con servicio Python
+    await this.parkingDetectionService.syncZonesWithPythonService(camera.id);
+
+    return saved;
+  }
+
+  async bulkCreateParkingZones(bulkDto: BulkCreateParkingZonesDto): Promise<ParkingZone[]> {
+    const camera = await this.findOne(bulkDto.cameraId);
+    
+    const zones = bulkDto.zones.map(zone => 
+      this.parkingZoneRepository.create({
+        ...zone,
+        camera,
+      })
+    );
+
+    const saved = await this.parkingZoneRepository.save(zones);
+    
+    // Actualizar total de espacios en la cámara
+    camera.total_parking = await this.parkingZoneRepository.count({
+      where: { camera: { id: camera.id } },
+    });
+    await this.cameraRepository.save(camera);
+
+    // Sincronizar con servicio Python
+    await this.parkingDetectionService.syncZonesWithPythonService(camera.id);
+
+    return saved;
+  }
+
+  async updateParkingZone(zoneId: string, updateDto: UpdateParkingZoneDto): Promise<ParkingZone> {
+    const zone = await this.parkingZoneRepository.findOne({
+      where: { id: zoneId },
+      relations: ['camera'],
+    });
+
+    if (!zone) {
+      throw new NotFoundException(`Parking zone with ID ${zoneId} not found`);
+    }
+
+    Object.assign(zone, updateDto);
+    const updated = await this.parkingZoneRepository.save(zone);
+
+    // Sincronizar con servicio Python
+    await this.parkingDetectionService.syncZonesWithPythonService(zone.camera.id);
+
+    return updated;
+  }
+
+  async deleteParkingZone(zoneId: string): Promise<void> {
+    const zone = await this.parkingZoneRepository.findOne({
+      where: { id: zoneId },
+      relations: ['camera'],
+    });
+
+    if (!zone) {
+      throw new NotFoundException(`Parking zone with ID ${zoneId} not found`);
+    }
+
+    const cameraId = zone.camera.id;
+    await this.parkingZoneRepository.remove(zone);
+
+    // Actualizar total de espacios en la cámara
+    const camera = await this.findOne(cameraId);
+    camera.total_parking = await this.parkingZoneRepository.count({
+      where: { camera: { id: cameraId } },
+    });
+    await this.cameraRepository.save(camera);
+
+    // Sincronizar con servicio Python
+    await this.parkingDetectionService.syncZonesWithPythonService(cameraId);
+  }
+
+  async getParkingZonesByCamera(cameraId: string): Promise<ParkingZone[]> {
+    return await this.parkingZoneRepository.find({
+      where: { camera: { id: cameraId } },
+      order: { spaceNumber: 'ASC' },
+    });
+  }
+
+  async deleteAllZonesFromCamera(cameraId: string): Promise<void> {
+    const camera = await this.findOne(cameraId);
+    await this.parkingZoneRepository.delete({ camera: { id: cameraId } });
+    
+    camera.total_parking = 0;
+    await this.cameraRepository.save(camera);
+
+    // Sincronizar con servicio Python
+    await this.parkingDetectionService.syncZonesWithPythonService(cameraId);
   }
 }

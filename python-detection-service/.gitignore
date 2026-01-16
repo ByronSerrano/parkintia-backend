@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+ENV/
+*.pt
+!yolov8s.pt
+*.jpg
+*.png
+*.mp4
+*.avi

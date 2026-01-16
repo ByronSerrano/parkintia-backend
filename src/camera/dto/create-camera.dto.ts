@@ -1,15 +1,23 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, IsOptional, IsString, IsBoolean } from 'class-validator';
 
 export class CreateCameraDto {
-  @ApiProperty({
-    description: 'The filename of the camera video/image',
-    example: 'camera_01_video.mp4',
-  })
-  filename: string;
+  @IsNotEmpty()
+  @IsString()
+  name: string;
 
-  @ApiProperty({
-    description: 'The physical location of the camera',
-    example: 'Entrance Gate A',
-  })
-  location: string;
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  streamUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  videoFile?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }
