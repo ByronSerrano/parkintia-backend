@@ -10,4 +10,5 @@ services:
     environment:
       NODE_ENV: development
       PORT: 3001
+      PYTHON_SERVICE_URL: http://host.docker.internal:5000
     command: npm run start:dev
