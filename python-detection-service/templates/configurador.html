@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurador de Zonas - ParkingEyes</title>
+    <style>
+        body { font-family: sans-serif; background: #1a1a1a; color: white; margin: 0; padding: 20px; }
+        .container { display: flex; gap: 20px; }
+        .canvas-container { position: relative; }
+        canvas { border: 2px solid #333; cursor: crosshair; background: #000; }
+        .controls { width: 300px; background: #2a2a2a; padding: 20px; border-radius: 8px; }
+        h1 { margin-top: 0; font-size: 1.5rem; color: #007bff; }
+        .btn { display: block; width: 100%; padding: 10px; margin-bottom: 10px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .zone-list { max-height: 400px; overflow-y: auto; margin-top: 20px; }
+        .zone-item { background: #333; padding: 10px; margin-bottom: 5px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
+        .instructions { font-size: 0.9rem; color: #aaa; margin-bottom: 20px; }
+        select { width: 100%; padding: 10px; margin-bottom: 20px; background: #333; color: white; border: 1px solid #444; }
+    </style>
+</head>
+<body>
+
+    <h1>📐 ParkingEyes - Configurador de Zonas</h1>
+
+    <div class="container">
+        <div class="canvas-container">
+            <div style="margin-bottom: 15px;">
+                <label>Seleccionar Cámara para configurar:</label>
+                <select id="cameraSelect" onchange="changeCamera()">
+                    <option value="cam-08">Cámara 8 (Principal)</option>
+                    <option value="cam-01">Cámara 1 (Secundaria)</option>
+                </select>
+            </div>
+            <canvas id="parkingCanvas" width="1020" height="500"></canvas>
+        </div>
+
+        <div class="controls">
+            <p class="instructions">
+                <b>Instrucciones:</b><br>
+                1. Selecciona la cámara.<br>
+                2. Haz 4 clics para marcar un espacio.<br>
+                3. Repite para cada parqueadero.<br>
+                4. ¡No olvides Guardar!
+            </p>
+
+            <button class="btn btn-danger" onclick="clearLastPoint()">Deshacer último punto</button>
+            <button class="btn btn-danger" onclick="deleteAllZones()">Borrar todas las zonas</button>
+            <hr>
+            <button class="btn btn-success" onclick="saveConfiguration()">💾 GUARDAR ZONAS</button>
+
+            <h3>Zonas (<span id="zoneCount">0</span>)</h3>
+            <div class="zone-list" id="zoneList"></div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('parkingCanvas');
+        const ctx = canvas.getContext('2d');
+        const zoneListEl = document.getElementById('zoneList');
+        const zoneCountEl = document.getElementById('zoneCount');
+        const cameraSelect = document.getElementById('cameraSelect');
+
+        let zones = [];
+        let currentPoints = [];
+        let backgroundImage = new Image();
+        let currentCameraId = 'cam-08';
+
+        async function changeCamera() {
+            currentCameraId = cameraSelect.value;
+            currentPoints = [];
+            await loadSavedZones();
+            loadCameraImage();
+        }
+
+        async function loadSavedZones() {
+            try {
+                const response = await fetch(`/api/zones/get?cameraId=${currentCameraId}`);
+                const data = await response.json();
+                if (data.success) {
+                    zones = data.zones;
+                    updateZoneList();
+                    draw();
+                }
+            } catch (e) {
+                console.error("Error cargando zonas:", e);
+            }
+        }
+
+        function loadCameraImage() {
+            const img = new Image();
+            img.src = `/api/snapshot?cameraId=${currentCameraId}&t=` + new Date().getTime();
+            img.onload = () => {
+                backgroundImage = img;
+                draw();
+            };
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.round(e.clientX - rect.left);
+            const y = Math.round(e.clientY - rect.top);
+            currentPoints.push({x, y});
+            if (currentPoints.length === 4) {
+                addZone(currentPoints);
+                currentPoints = [];
+            }
+            draw();
+        });
+
+        function addZone(points) {
+            const id = zones.length + 1;
+            zones.push({
+                id: `zone-${currentCameraId}-${Date.now()}`,
+                spaceNumber: id,
+                coordinates: [...points]
+            });
+            updateZoneList();
+        }
+
+        function updateZoneList() {
+            zoneListEl.innerHTML = '';
+            zones.forEach((zone, index) => {
+                const div = document.createElement('div');
+                div.className = 'zone-item';
+                div.innerHTML = `<span>🅿️ Espacio ${zone.spaceNumber}</span><button style="background:none;border:none;color:red;cursor:pointer" onclick="deleteZone(${index})">❌</button>`;
+                zoneListEl.appendChild(div);
+            });
+            zoneCountEl.innerText = zones.length;
+        }
+
+        function deleteZone(index) {
+            zones.splice(index, 1);
+            zones.forEach((z, i) => z.spaceNumber = i + 1);
+            updateZoneList();
+            draw();
+        }
+
+        function deleteAllZones() {
+            if(confirm("¿Borrar todo?")) { zones = []; currentPoints = []; updateZoneList(); draw(); }
+        }
+
+        function clearLastPoint() { currentPoints.pop(); draw(); }
+
+        async function saveConfiguration() {
+            if (zones.length === 0) { alert("Dibuja al menos una zona."); return; }
+            try {
+                const response = await fetch('/api/zones/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cameraId: currentCameraId, zones: zones })
+                });
+                const res = await response.json();
+                if (res.success) alert("✅ Zonas guardadas para " + currentCameraId);
+            } catch (e) { alert("❌ Error: " + e); }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (backgroundImage.src) ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+            
+            zones.forEach(zone => {
+                ctx.beginPath();
+                ctx.moveTo(zone.coordinates[0].x, zone.coordinates[0].y);
+                zone.coordinates.forEach(p => ctx.lineTo(p.x, p.y));
+                ctx.closePath();
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.fillStyle = 'rgba(0, 255, 0, 0.2)';
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.fillText(zone.spaceNumber, zone.coordinates[0].x, zone.coordinates[0].y - 5);
+            });
+
+            if (currentPoints.length > 0) {
+                ctx.beginPath();
+                ctx.moveTo(currentPoints[0].x, currentPoints[0].y);
+                currentPoints.forEach(p => ctx.lineTo(p.x, p.y));
+                ctx.strokeStyle = 'yellow';
+                ctx.stroke();
+                currentPoints.forEach(p => {
+                    ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fillStyle = 'yellow'; ctx.fill();
+                });
+            }
+        }
+
+        async function init() {
+            await loadSavedZones();
+            loadCameraImage();
+        }
+
+        init();
+        setInterval(loadCameraImage, 10000); 
+    </script>
+</body>
+</html>

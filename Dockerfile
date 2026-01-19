@@ -1,10 +1,15 @@
-FROM node:latest
+FROM node:20-alpine
 
 WORKDIR /app
 
-COPY . .
+# Copiar package.json
+COPY package.json ./
 
-RUN npm install
+# Eliminar package-lock.json y generar uno nuevo limpio
+RUN rm -f package-lock.json && npm install
+
+# Copiar resto del código
+COPY . .
 
 EXPOSE 3001
 

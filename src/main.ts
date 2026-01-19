@@ -12,12 +12,12 @@ async function bootstrap() {
   });
   const configService = app.get(ConfigService);
 
-  // Cors - Configuración específica
+  // Cors - Configuración total para desarrollo
   app.enableCors({
-    origin: ['http://localhost:3000', 'http://localhost:3001'],
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:5173'],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    allowedHeaders: 'Content-Type, Accept, Authorization',
   });
 
   // Config for swagger
