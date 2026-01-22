@@ -1,0 +1,61 @@
+2026/01/21-13:26:35.971 4fa2 Reusing MANIFEST /home/miguelzea/hackaton/backend-hackathon/.wwebjs_auth/session-parking-bot/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/01/21-13:26:35.972 4fa2 Recovering log #906
+2026/01/21-13:26:35.972 4fa2 Reusing old log /home/miguelzea/hackaton/backend-hackathon/.wwebjs_auth/session-parking-bot/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000906.log 
+2026/01/21-13:26:37.329 4fad Level-0 table #916: started
+2026/01/21-13:26:37.330 4fad Level-0 table #916: 48499 bytes OK
+2026/01/21-13:26:37.331 4fad Delete type=0 #906
+2026/01/21-13:26:37.331 4fa2 Manual compaction at level-0 from '\x00\x8b\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x8c\x00\x00\x00' @ 0 : 0; will stop at '\x00\x8b\x00\x00\x05' @ 2411502 : 1
+2026/01/21-13:26:37.332 4fa2 Compacting 1@0 + 3@1 files
+2026/01/21-13:26:37.333 4fa2 Generated table #917@0: 1006 keys, 21440 bytes
+2026/01/21-13:26:37.368 4fa2 Generated table #918@0: 16142 keys, 2172400 bytes
+2026/01/21-13:26:37.373 4fa2 Generated table #919@0: 9880 keys, 141710 bytes
+2026/01/21-13:26:37.374 4fa2 Generated table #920@0: 405 keys, 8976 bytes
+2026/01/21-13:26:37.374 4fa2 Compacted 1@0 + 3@1 files => 2344526 bytes
+2026/01/21-13:26:37.375 4fa2 compacted to: files[ 0 4 25 0 0 0 0 ]
+2026/01/21-13:26:37.375 4fa2 Delete type=2 #916
+2026/01/21-13:26:37.375 4fa2 Manual compaction at level-0 from '\x00\x8b\x00\x00\x05' @ 2411502 : 1 .. '\x00\x8c\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/01/21-13:26:37.416 4fa4 Compacting 1@1 + 2@2 files
+2026/01/21-13:26:37.471 4fa4 Generated table #921@1: 53684 keys, 2226825 bytes
+2026/01/21-13:26:37.519 4fa4 Generated table #922@1: 42983 keys, 2207471 bytes
+2026/01/21-13:26:37.519 4fa4 Compacted 1@1 + 2@2 files => 4434296 bytes
+2026/01/21-13:26:37.520 4fa4 compacted to: files[ 0 3 25 0 0 0 0 ]
+2026/01/21-13:26:37.521 4fa4 Delete type=2 #910
+2026/01/21-13:26:37.521 4fa4 Delete type=2 #917
+2026/01/21-13:26:37.521 4fa4 Delete type=2 #913
+2026/01/21-13:26:37.521 4fa4 Delete type=2 #912
+2026/01/21-13:26:37.521 4fa4 Delete type=2 #909
+2026/01/21-13:26:37.521 4fa4 Delete type=2 #911
+2026/01/21-13:26:39.398 4fa2 Compacting 1@1 + 7@2 files
+2026/01/21-13:26:39.425 4fa2 Generated table #923@1: 2810 keys, 2150519 bytes
+2026/01/21-13:26:39.450 4fa2 Generated table #924@1: 2625 keys, 2148213 bytes
+2026/01/21-13:26:39.473 4fa2 Generated table #925@1: 2646 keys, 2141351 bytes
+2026/01/21-13:26:39.495 4fa2 Generated table #926@1: 2465 keys, 2138818 bytes
+2026/01/21-13:26:39.533 4fa2 Generated table #927@1: 25827 keys, 2188571 bytes
+2026/01/21-13:26:39.588 4fa2 Generated table #928@1: 34133 keys, 2264107 bytes
+2026/01/21-13:26:39.704 4fa2 Generated table #929@1: 30245 keys, 2265267 bytes
+2026/01/21-13:26:39.802 4fa2 Generated table #930@1: 33968 keys, 2254574 bytes
+2026/01/21-13:26:39.811 4fa2 Generated table #931@1: 819 keys, 65669 bytes
+2026/01/21-13:26:39.811 4fa2 Compacted 1@1 + 7@2 files => 17617089 bytes
+2026/01/21-13:26:39.812 4fa2 compacted to: files[ 0 2 27 0 0 0 0 ]
+2026/01/21-13:26:39.847 4fa4 Compacting 1@1 + 3@2 files
+2026/01/21-13:26:39.918 4fa4 Generated table #932@1: 84566 keys, 2280419 bytes
+2026/01/21-13:26:39.960 4fa4 Generated table #933@1: 51012 keys, 2205952 bytes
+2026/01/21-13:26:39.968 4fa4 Generated table #934@1: 14101 keys, 319939 bytes
+2026/01/21-13:26:39.969 4fa4 Compacted 1@1 + 3@2 files => 4806310 bytes
+2026/01/21-13:26:39.969 4fa4 compacted to: files[ 0 1 27 0 0 0 0 ]
+2026/01/21-13:26:39.970 4fa4 Delete type=2 #867
+2026/01/21-13:26:39.970 4fa4 Delete type=2 #918
+2026/01/21-13:26:39.970 4fa4 Delete type=2 #865
+2026/01/21-13:26:39.970 4fa4 Delete type=2 #866
+2026/01/21-13:26:39.971 4fa4 Delete type=2 #870
+2026/01/21-13:26:39.971 4fa4 Delete type=2 #864
+2026/01/21-13:26:39.971 4fa4 Delete type=2 #863
+2026/01/21-13:26:39.971 4fa4 Delete type=2 #889
+2026/01/21-13:26:41.834 4fa4 Compacting 1@1 + 2@2 files
+2026/01/21-13:26:41.852 4fa4 Generated table #935@1: 28480 keys, 650139 bytes
+2026/01/21-13:26:41.852 4fa4 Compacted 1@1 + 2@2 files => 650139 bytes
+2026/01/21-13:26:41.853 4fa4 compacted to: files[ 0 0 26 0 0 0 0 ]
+2026/01/21-13:26:41.853 4fa4 Delete type=2 #878
+2026/01/21-13:26:41.854 4fa4 Delete type=2 #892
+2026/01/21-13:26:41.854 4fa4 Delete type=2 #919
+2026/01/21-13:26:41.854 4fa4 Delete type=2 #891

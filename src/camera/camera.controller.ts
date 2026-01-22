@@ -196,6 +196,40 @@ export class CameraController {
     return this.cameraService.deleteAllZonesFromCamera(cameraId);
   }
 
+  // ========== MOBILE CAMERA SUPPORT ==========
+
+  @Post('mobile/register')
+  async registerMobileCamera(
+    @Body() body: { cameraId: string; url: string; requiresAuth?: boolean },
+  ) {
+    try {
+      const response = await axios.post(`${this.pythonServiceUrl}/api/cameras/add`, {
+        cameraId: body.cameraId,
+        url: body.url,
+        requiresAuth: body.requiresAuth || false,
+      });
+      return response.data;
+    } catch (error) {
+      throw new HttpException(
+        'Error registrando cámara móvil',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('mobile/list')
+  async listAllCameras() {
+    try {
+      const response = await axios.get(`${this.pythonServiceUrl}/api/cameras/list`);
+      return response.data;
+    } catch (error) {
+      throw new HttpException(
+        'Error obteniendo lista de cámaras',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   // ========== PARKING DETECTION & STATUS ==========
 
   @Get(':cameraId/parking-status')

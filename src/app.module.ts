@@ -13,6 +13,7 @@ import { AuthMiddleware } from './middlewares/auth.middleware';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { dataBaseConfig } from './config/database.config';
 import { CameraModule } from './camera/camera.module';
+import { WhatsAppModule } from './whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { CameraModule } from './camera/camera.module';
     AuthModule,
     UserModule,
     CameraModule,
+    WhatsAppModule,
   ],
   controllers: [AppController],
   providers: [AppService],
@@ -58,6 +60,9 @@ export class AppModule implements NestModule {
         { path: 'camera/:cameraId/parking-status', method: RequestMethod.ALL },
         { path: 'camera/:cameraId/process-frame', method: RequestMethod.ALL },
         { path: 'camera/:cameraId/stream', method: RequestMethod.ALL },
+        // WhatsApp endpoints sin autenticación
+        { path: 'whatsapp/status', method: RequestMethod.GET },
+        { path: 'whatsapp/send', method: RequestMethod.POST },
       )
       .forRoutes('*');
   }

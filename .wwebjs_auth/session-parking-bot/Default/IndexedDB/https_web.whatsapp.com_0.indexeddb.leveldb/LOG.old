@@ -1,0 +1,68 @@
+2026/01/21-13:25:11.452 4e3c Reusing MANIFEST /home/miguelzea/hackaton/backend-hackathon/.wwebjs_auth/session-parking-bot/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/01/21-13:25:11.453 4e3c Recovering log #883
+2026/01/21-13:25:11.479 4e3c Reusing old log /home/miguelzea/hackaton/backend-hackathon/.wwebjs_auth/session-parking-bot/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000883.log 
+2026/01/21-13:25:11.480 4e3c Delete type=2 #896
+2026/01/21-13:25:11.480 4e3c Delete type=2 #895
+2026/01/21-13:25:11.480 4e3c Delete type=2 #874
+2026/01/21-13:25:11.480 4e3c Delete type=2 #893
+2026/01/21-13:25:11.480 4e3c Delete type=2 #894
+2026/01/21-13:25:11.480 4e3c Delete type=2 #897
+2026/01/21-13:25:11.480 4e3c Delete type=2 #899
+2026/01/21-13:25:11.480 4e3c Delete type=2 #898
+2026/01/21-13:25:11.480 4e3c Delete type=2 #875
+2026/01/21-13:25:11.480 4e3c Delete type=2 #871
+2026/01/21-13:25:11.480 4e3c Delete type=2 #902
+2026/01/21-13:25:11.480 4e3c Delete type=2 #900
+2026/01/21-13:25:11.480 4e3c Delete type=2 #888
+2026/01/21-13:25:11.480 4e3c Delete type=2 #901
+2026/01/21-13:25:12.081 4e3c Expanding@1 1+10 (2192417+21655751 bytes) to 2+10 (2459550+21655751 bytes)
+2026/01/21-13:25:12.081 4e3c Compacting 2@1 + 10@2 files
+2026/01/21-13:25:12.129 4e3c Generated table #894@1: 53990 keys, 2229009 bytes
+2026/01/21-13:25:12.172 4e3c Generated table #895@1: 43002 keys, 2208730 bytes
+2026/01/21-13:25:12.193 4e3c Generated table #896@1: 2175 keys, 2150283 bytes
+2026/01/21-13:25:12.215 4e3c Generated table #897@1: 2476 keys, 2150871 bytes
+2026/01/21-13:25:12.237 4e3c Generated table #898@1: 2464 keys, 2165040 bytes
+2026/01/21-13:25:12.259 4e3c Generated table #899@1: 2517 keys, 2153413 bytes
+2026/01/21-13:25:12.281 4e3c Generated table #900@1: 2384 keys, 2148499 bytes
+2026/01/21-13:25:12.303 4e3c Generated table #901@1: 2653 keys, 2156189 bytes
+2026/01/21-13:25:12.327 4e3c Generated table #902@1: 3240 keys, 2156749 bytes
+2026/01/21-13:25:12.349 4e3c Generated table #903@1: 2863 keys, 2144356 bytes
+2026/01/21-13:25:12.371 4e3c Generated table #904@1: 2878 keys, 2143165 bytes
+2026/01/21-13:25:12.373 4e3c Generated table #905@1: 128 keys, 95762 bytes
+2026/01/21-13:25:12.373 4e3c Compacted 2@1 + 10@2 files => 23902066 bytes
+2026/01/21-13:25:12.373 4e3c compacted to: files[ 0 2 25 0 0 0 0 ]
+2026/01/21-13:25:12.374 4e3c Delete type=2 #856
+2026/01/21-13:25:12.374 4e3c Delete type=2 #850
+2026/01/21-13:25:12.375 4e3c Delete type=2 #855
+2026/01/21-13:25:12.375 4e3c Delete type=2 #851
+2026/01/21-13:25:12.375 4e3c Delete type=2 #852
+2026/01/21-13:25:12.375 4e3c Delete type=2 #849
+2026/01/21-13:25:12.375 4e3c Delete type=2 #857
+2026/01/21-13:25:12.375 4e3c Delete type=2 #853
+2026/01/21-13:25:12.375 4e3c Delete type=2 #885
+2026/01/21-13:25:12.375 4e3c Delete type=2 #848
+2026/01/21-13:25:12.375 4e3c Delete type=2 #886
+2026/01/21-13:25:12.375 4e3c Delete type=2 #854
+2026/01/21-13:25:12.833 4e3a Level-0 table #907: started
+2026/01/21-13:25:12.845 4e3a Level-0 table #907: 546859 bytes OK
+2026/01/21-13:25:12.846 4e3a Delete type=0 #883
+2026/01/21-13:25:12.847 4e3a Manual compaction at level-0 from '\x00\x8a\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x8b\x00\x00\x00' @ 0 : 0; will stop at '\x00\x8a\x00\x00\x05' @ 2409720 : 1
+2026/01/21-13:25:12.847 4e3a Compacting 1@0 + 2@1 files
+2026/01/21-13:25:12.856 4e3a Generated table #908@0: 15959 keys, 137338 bytes
+2026/01/21-13:25:12.892 4e3a Generated table #909@0: 16142 keys, 2172400 bytes
+2026/01/21-13:25:12.899 4e3a Generated table #910@0: 9840 keys, 138439 bytes
+2026/01/21-13:25:12.900 4e3a Generated table #911@0: 405 keys, 8976 bytes
+2026/01/21-13:25:12.900 4e3a Compacted 1@0 + 2@1 files => 2457153 bytes
+2026/01/21-13:25:12.901 4e3a compacted to: files[ 0 4 25 0 0 0 0 ]
+2026/01/21-13:25:12.902 4e3a Manual compaction at level-0 from '\x00\x8a\x00\x00\x05' @ 2409720 : 1 .. '\x00\x8b\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/01/21-13:25:13.298 4e3c Compacting 1@1 + 2@2 files
+2026/01/21-13:25:13.345 4e3c Generated table #912@1: 53553 keys, 2228068 bytes
+2026/01/21-13:25:13.386 4e3c Generated table #913@1: 42920 keys, 2203942 bytes
+2026/01/21-13:25:13.386 4e3c Compacted 1@1 + 2@2 files => 4432010 bytes
+2026/01/21-13:25:13.387 4e3c compacted to: files[ 0 3 25 0 0 0 0 ]
+2026/01/21-13:25:13.387 4e3c Delete type=2 #895
+2026/01/21-13:25:13.387 4e3c Delete type=2 #894
+2026/01/21-13:25:13.387 4e3c Delete type=2 #908
+2026/01/21-13:25:13.387 4e3c Delete type=2 #907
+2026/01/21-13:25:13.387 4e3c Delete type=2 #862
+2026/01/21-13:25:13.388 4e3c Delete type=2 #887
