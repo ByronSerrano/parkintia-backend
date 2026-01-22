@@ -33,7 +33,7 @@ export class CameraController {
     private readonly parkingDetectionService: ParkingDetectionService,
     private readonly configService: ConfigService,
   ) {
-    this.pythonServiceUrl = this.configService.get<string>('PYTHON_SERVICE_URL') || 'http://localhost:5000';
+    this.pythonServiceUrl = this.configService.get<string>('PYTHON_SERVICE_URL') || 'http://127.0.0.1:5000';
   }
 
   // ========== CAMERA CRUD ==========
@@ -71,8 +71,11 @@ export class CameraController {
     @Res() response: Response,
   ) {
     try {
+      const url = `${this.pythonServiceUrl}/api/video/feed?cameraId=${cameraId}`;
+      console.log(`📡 Connecting to video service at: ${url}`);
+      
       const pythonResponse = await axios.get(
-        `${this.pythonServiceUrl}/api/video/feed?cameraId=${cameraId}`,
+        url,
         {
           responseType: 'stream',
         }
@@ -86,6 +89,11 @@ export class CameraController {
 
       pythonResponse.data.pipe(response);
     } catch (error) {
+      console.error('❌ Error connecting to video service:', error.message);
+      if (error.response) {
+          console.error('   Status:', error.response.status);
+          console.error('   Data:', error.response.data);
+      }
       throw new HttpException(
         'Failed to connect to video service',
         HttpStatus.SERVICE_UNAVAILABLE,

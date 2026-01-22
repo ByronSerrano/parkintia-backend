@@ -1,4 +1,4 @@
-# compiled output
+# Compiled output
 /dist
 /node_modules
 /build
@@ -14,6 +14,7 @@ lerna-debug.log*
 
 # OS
 .DS_Store
+Thumbs.db
 
 # Tests
 /coverage
@@ -27,24 +28,44 @@ lerna-debug.log*
 *.launch
 .settings/
 *.sublime-workspace
-
-# IDE - VSCode
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
 
-# dotenv environment variable files
+# Dotenv environment variable files
 .env
 .env.development.local
 .env.test.local
 .env.production.local
 .env.local
 
-# temp directory
+# Temp directory
 .temp
 .tmp
+
+# WhatsApp Bot Data (Sensitive - MultiFileAuthState)
+auth_info_baileys/
+auth_info/
+*.session
+*.json-journal
+
+# Python Detection Service
+python-detection-service/venv/
+python-detection-service/.venv/
+python-detection-service/__pycache__/
+python-detection-service/*.py[cod]
+python-detection-service/*$py.class
+python-detection-service/.pytest_cache/
+python-detection-service/zones.json
+python-detection-service/*.jpg
+python-detection-service/*.png
+python-detection-service/*.mp4
+
+# YOLO Models (Large files)
+*.pt
+*.onnx
 
 # Runtime data
 pids
@@ -52,5 +73,5 @@ pids
 *.seed
 *.pid.lock
 
-# Diagnostic reports (https://nodejs.org/api/report.html)
+# Diagnostic reports
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json

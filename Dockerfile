@@ -1,5 +1,8 @@
 FROM node:20-alpine
 
+# Instalar git para dependencias que lo requieran
+RUN apk add --no-cache git
+
 WORKDIR /app
 
 # Copiar package.json

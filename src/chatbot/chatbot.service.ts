@@ -1,177 +1,250 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import axios from 'axios';
 import { ChatMessageDto, ChatResponseDto } from './dto/chat-message.dto';
+import { CameraService } from '../camera/camera.service';
+
+enum ChatState {
+  MAIN_MENU = 'MAIN_MENU',
+  MEDICAL_MENU = 'MEDICAL_MENU',
+}
+
+interface UserSession {
+  state: ChatState;
+  lastActivity: Date;
+}
 
 @Injectable()
 export class ChatbotService {
-  private readonly openRouterApiKey: string;
-  private readonly openRouterBaseUrl = 'https://openrouter.ai/api/v1';
+  private readonly logger = new Logger(ChatbotService.name);
+  private userSessions = new Map<string, UserSession>();
+  private readonly pythonServiceUrl: string;
 
   constructor(
     private configService: ConfigService,
+    private cameraService: CameraService,
     @InjectDataSource() private dataSource: DataSource,
   ) {
-    this.openRouterApiKey = this.configService.get<string>('OPENROUTER_API_KEY') || '';
-    if (!this.openRouterApiKey) {
-      console.warn('OPENROUTER_API_KEY no está configurada en las variables de entorno');
-    }
+    // Usar 127.0.0.1 para asegurar compatibilidad local (Mac/Node 18+)
+    this.pythonServiceUrl = this.configService.get<string>('PYTHON_SERVICE_URL') || 'http://127.0.0.1:5000';
   }
 
   async sendMessage(chatMessageDto: ChatMessageDto): Promise<ChatResponseDto> {
     try {
-      const { message, context, userId } = chatMessageDto;
+      const { message, userId } = chatMessageDto;
+      // Normalizar input: quitar espacios, minusculas
+      const cleanMessage = message.trim().toLowerCase(); 
+      const userKey = userId || 'default_user';
 
-      // Crear contexto específico del negocio de parking
-      const businessContext = await this.generateBusinessContext();
+      this.logger.log(`📩 Mensaje recibido de ${userKey}: "${cleanMessage}"`);
 
-      // Crear el prompt con contexto del negocio
-      const systemPrompt = `Eres un asistente especializado en el negocio de Parking IA, una solución de detección de parking en tiempo real para empresas, universidades y organizaciones. 
+      // Recuperar o inicializar sesión
+      let session = this.userSessions.get(userKey);
+      
+      // Si no existe sesión, la creamos y mostramos el menú principal inmediatamente
+      if (!session) {
+        this.logger.log(`🆕 Nueva sesión para ${userKey}`);
+        session = { state: ChatState.MAIN_MENU, lastActivity: new Date() };
+        this.userSessions.set(userKey, session);
+        return this.generateResponse(this.getMainMenuText(), 'main-menu');
+      }
 
-Tu función es ayudar a los usuarios con:
-- Información sobre el sistema de detección de parking en tiempo real
-- Beneficios para empresas y universidades
-- Características técnicas del sistema
-- Datos y estadísticas del parking
-- Consultas sobre espacios disponibles
-- Optimización de espacios de estacionamiento
+      this.logger.log(`🔄 Estado actual: ${session.state}`);
 
-Contexto del negocio:
-${businessContext}
+      session.lastActivity = new Date();
+      let responseText = '';
+      let nextState = session.state;
 
-Responde de manera profesional, útil y enfocada en el negocio de parking inteligente.`;
+      // 0. Verificar agradecimientos globales (intercepta antes de la máquina de estados)
+      if (cleanMessage.includes('gracias') || cleanMessage.includes('agradecid') || cleanMessage.includes('thank')) {
+        const currentMenu = session.state === ChatState.MAIN_MENU ? this.getMainMenuText() : this.getMedicalMenuText();
+        responseText = `¡De nada! Es un placer ayudarte. 😊\n\n¿Deseas consultar algo más?\n\n${currentMenu}`;
+        // No cambiamos el estado, nos quedamos donde estábamos
+        return this.generateResponse(responseText, session.state);
+      }
 
-      const response = await axios.post(
-        `${this.openRouterBaseUrl}/chat/completions`,
-        {
-          model: 'meta-llama/llama-3.1-8b-instruct:free',
-          messages: [
-            {
-              role: 'system',
-              content: systemPrompt,
-            },
-            {
-              role: 'user',
-              content: message,
-            },
-          ],
-          max_tokens: 500,
-          temperature: 0.7,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${this.openRouterApiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'http://localhost:3000',
-            'X-Title': 'Parking IA Chatbot',
-          },
-        },
-      );
+      // Máquina de estados
+      switch (session.state) {
+        case ChatState.MAIN_MENU:
+          // Variaciones extendidas para MedicalPluss
+          if (
+            cleanMessage === '1' || 
+            cleanMessage.startsWith('1.') || 
+            cleanMessage.includes('medical') || 
+            cleanMessage.includes('plus') || 
+            cleanMessage.includes('medica') ||
+            cleanMessage.includes('uno')
+          ) {
+            responseText = this.getMedicalMenuText();
+            nextState = ChatState.MEDICAL_MENU;
+          } else {
+            // Mensaje de error profesional para menú principal
+            responseText = `❌ *Lo sentimos, opción incorrecta.*\n\nNo hemos podido reconocer tu comando. Por favor selecciona una opción válida:\n\n1. MedicalPluss`;
+          }
+          break;
 
-      const assistantMessage = response.data.choices[0].message.content;
+        case ChatState.MEDICAL_MENU:
+          // Variaciones extendidas para Estacionamiento
+          if (
+            cleanMessage === '1' || 
+            cleanMessage.startsWith('1.') || 
+            cleanMessage.includes('estacionamiento') || 
+            cleanMessage.includes('parqueo') || 
+            cleanMessage.includes('lugar') || 
+            cleanMessage.includes('disponibilidad') ||
+            cleanMessage.includes('cupo') ||
+            cleanMessage.includes('espacio')
+          ) {
+            // Consultar Estacionamiento
+            this.logger.log('📊 Consultando estadísticas de estacionamiento...');
+            responseText = await this.getParkingStatsText();
+            // Mantenemos el estado para que pueda seguir consultando
+            responseText += `\n\n¿Deseas consultar algo más?\n${this.getMedicalMenuText()}`;
+          } 
+          // Variaciones extendidas para Ayuda/Reportar
+          else if (
+            cleanMessage === '2' || 
+            cleanMessage.startsWith('2.') || 
+            cleanMessage.includes('ayuda') || 
+            cleanMessage.includes('reportar') || 
+            cleanMessage.includes('soporte') ||
+            cleanMessage.includes('problema') ||
+            cleanMessage.includes('contacto') ||
+            cleanMessage.includes('llamar')
+          ) {
+            // Ayuda / Reportar
+            responseText = `ℹ️ *Reportar o Ayuda*\n\nSi necesitas asistencia técnica, reportar un problema o recibir más información, por favor comunícate directamente con nosotros:\n\n📞 *Contacto:* +593 987156456\n\nSelecciona una opción del menú para continuar:\n${this.getMedicalMenuText()}`;
+          } 
+          // Variaciones extendidas para Regresar
+          else if (
+            cleanMessage === '0' || 
+            cleanMessage.startsWith('0.') || 
+            cleanMessage.includes('regresar') || 
+            cleanMessage.includes('volver') ||
+            cleanMessage.includes('atras') ||
+            cleanMessage.includes('inicio') ||
+            cleanMessage.includes('salir')
+          ) {
+            // Regresar (opción estándar)
+            responseText = this.getMainMenuText();
+            nextState = ChatState.MAIN_MENU;
+          } else {
+            // Mensaje de error profesional con opción de regresar
+            responseText = `❌ *Lo sentimos, opción incorrecta.*\n\nPor favor intenta con una de las opciones disponibles:\n\n1. Estacionamiento\n2. Reportar o Ayuda\n0. Regresar al menú principal`;
+          }
+          break;
 
-      return {
-        message: assistantMessage,
-        timestamp: new Date(),
-        context: context || 'parking-ia-business',
-      };
+        default:
+          session.state = ChatState.MAIN_MENU;
+          responseText = this.getMainMenuText();
+          break;
+      }
+
+      // Actualizar estado
+      session.state = nextState;
+      this.userSessions.set(userKey, session);
+      this.logger.log(`➡️ Nuevo estado: ${nextState}`);
+
+      return this.generateResponse(responseText, nextState);
+
     } catch (error) {
-      console.error('Error al comunicarse con OpenRouter:', error);
-      throw new HttpException(
-        'Error al procesar el mensaje del chat',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      this.logger.error('❌ Error procesando mensaje:', error);
+      return this.generateResponse('Lo siento, ocurrió un error interno. Intenta nuevamente más tarde.', 'error');
     }
   }
 
-  private async generateBusinessContext(): Promise<string> {
+  private getMainMenuText(): string {
+    return `🚗 *Bienvenido a Parking IA*\n\nPor favor selecciona el lugar que deseas consultar:\n\n1. MedicalPluss`;
+  }
+
+  private getMedicalMenuText(): string {
+    return `🏥 *Menú MedicalPluss*\n\n¿Qué deseas consultar?\n\n1. Estacionamiento (Ver disponibilidad)\n2. Reportar o Ayuda\n0. Regresar al menú principal`;
+  }
+
+  private async getParkingStatsText(): Promise<string> {
     try {
-      // Obtener datos relevantes de la base de datos
-      const userCount = await this.getUserCount();
-      const recentActivity = await this.getRecentActivity();
+      // 1. Obtener todas las cámaras
+      const cameras = await this.cameraService.findAll();
+      this.logger.log(`📷 Cámaras encontradas en DB: ${cameras.length}`);
+      
+      if (!cameras || cameras.length === 0) {
+        return '🚫 No hay cámaras configuradas en el sistema actualmente.';
+      }
 
-      return `
-Parking IA es una solución innovadora de detección de parking en tiempo real que ayuda a:
+      let totalOccupied = 0;
+      let totalFree = 0;
+      let totalSpaces = 0;
 
-EMPRESAS:
-- Optimizar el uso de espacios de estacionamiento
-- Reducir el tiempo de búsqueda de parking
-- Mejorar la experiencia de empleados y visitantes
-- Generar reportes de ocupación en tiempo real
+      // 2. Consultar estado en vivo de cada cámara al servicio Python
+      // Usamos Promise.all para hacerlo en paralelo
+      const statusPromises = cameras.map(async (camera) => {
+        try {
+          // Priorizar streamUrl (ej: cam-08) si existe y no es "stream" genérico, sino usar ID
+          const targetId = (camera.streamUrl && camera.streamUrl !== 'stream') ? camera.streamUrl : camera.id;
+          
+          this.logger.log(`🔎 Consultando Python para cámara: ${camera.name} (ID: ${targetId})`);
+          
+          const response = await axios.get(
+            `${this.pythonServiceUrl}/api/parking/status?cameraId=${targetId}`
+          );
+          
+          this.logger.log(`✅ Respuesta Python para ${targetId}: ${JSON.stringify(response.data)}`);
+          return response.data;
+        } catch (error) {
+          this.logger.warn(`❌ Error obteniendo estado de cámara ${camera.name}: ${error.message}`);
+          return null;
+        }
+      });
 
-UNIVERSIDADES:
-- Gestionar eficientemente los espacios para estudiantes y personal
-- Reducir el tráfico interno del campus
-- Proporcionar información en tiempo real sobre disponibilidad
-- Integración con sistemas académicos
+      const results = await Promise.all(statusPromises);
 
-CARACTERÍSTICAS TÉCNICAS:
-- Detección en tiempo real usando IA y visión computacional
-- Dashboard web para monitoreo
-- API REST para integraciones
-- Notificaciones automáticas
-- Reportes y analytics
+      // 3. Agregar resultados
+      for (const stat of results) {
+        if (stat) {
+          totalOccupied += (stat.occupiedSpaces || 0);
+          totalSpaces += (stat.totalSpaces || 0);
+          // Calcular libres (total - ocupados)
+          const free = (stat.totalSpaces || 0) - (stat.occupiedSpaces || 0);
+          totalFree += free > 0 ? free : 0;
+        }
+      }
 
-DATOS ACTUALES:
-- Usuarios registrados: ${userCount}
-- Actividad reciente: ${recentActivity}
+      this.logger.log(`∑ Totales: Ocupados=${totalOccupied}, Libres=${totalFree}, Total=${totalSpaces}`);
 
-El sistema utiliza tecnología avanzada de machine learning para detectar automáticamente la ocupación de espacios de parking mediante cámaras y sensores.
-      `;
+      // Si no pudimos obtener datos en vivo de ninguna, usar fallback de DB
+      if (totalSpaces === 0 && cameras.length > 0) {
+         this.logger.warn('⚠️ Usando fallback de base de datos porque Python devolvió 0 o falló.');
+         totalSpaces = cameras.reduce((acc, c) => acc + c.total_parking, 0);
+         totalFree = totalSpaces; // Asumir libres si no hay IA
+      }
+
+      const occupancyRate = totalSpaces > 0 ? ((totalOccupied / totalSpaces) * 100).toFixed(1) : '0.0';
+
+      return `📊 *Estado del Estacionamiento*\n\n🚘 Ocupados: ${totalOccupied}\n✅ Disponibles: ${totalFree}\n🔢 Total Espacios: ${totalSpaces}\n📉 Ocupación: ${occupancyRate}%`;
+
     } catch (error) {
-      console.error('Error al generar contexto del negocio:', error);
-      return 'Parking IA es una solución de detección de parking en tiempo real para empresas y universidades.';
+      this.logger.error('Error calculando estadísticas globales:', error);
+      return '❌ Error obteniendo datos del estacionamiento en tiempo real.';
     }
   }
 
-  private async getUserCount(): Promise<number> {
-    try {
-      const result = await this.dataSource.query('SELECT COUNT(*) as count FROM "user"');
-      return parseInt(result[0].count) || 0;
-    } catch (error) {
-      return 0;
-    }
+  private generateResponse(message: string, context: string): ChatResponseDto {
+    return {
+      message,
+      timestamp: new Date(),
+      context,
+    };
   }
 
-  private async getRecentActivity(): Promise<string> {
-    try {
-      // Ejemplo de consulta de actividad reciente - ajusta según tu esquema de BD
-      const result = await this.dataSource.query(`
-        SELECT COUNT(*) as count 
-        FROM "user" 
-        WHERE created_at > NOW() - INTERVAL '24 hours'
-      `);
-      const recentUsers = parseInt(result[0].count) || 0;
-      return `${recentUsers} nuevos usuarios en las últimas 24 horas`;
-    } catch (error) {
-      return 'Sistema funcionando correctamente';
-    }
-  }
-
+  // Métodos legacy para compatibilidad si algo los llama
   async getBusinessInfo(): Promise<any> {
-    try {
-      const userCount = await this.getUserCount();
-      const recentActivity = await this.getRecentActivity();
-
-      return {
-        totalUsers: userCount,
-        recentActivity,
-        features: [
-          'Detección en tiempo real',
-          'Dashboard web',
-          'API REST',
-          'Reportes y analytics',
-          'Notificaciones automáticas',
-        ],
-        targetMarkets: ['Empresas', 'Universidades', 'Centros comerciales', 'Hospitales'],
-      };
-    } catch (error) {
-      throw new HttpException(
-        'Error al obtener información del negocio',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    return {
+      totalUsers: 0,
+      recentActivity: 'N/A',
+      features: [],
+      targetMarkets: []
+    };
   }
 }
