@@ -25,7 +25,7 @@ DEFAULT_PASS = os.environ.get("CAMERA_PASS", "Jdaza2026.")
 
 # Diccionario de cámaras disponibles
 # Si MOBILE_CAMERA_URL es un número (ej "0"), se usará como webcam USB/Local
-mobile_url = os.environ.get("MOBILE_CAMERA_URL", "http://192.168.100.157:8081/video") 
+mobile_url = os.environ.get("MOBILE_CAMERA_URL", "http://192.168.216.40:8081/video") 
 
 CAMERAS = {
     "mobile": mobile_url, 
@@ -93,12 +93,17 @@ class MjpegReader:
         self.auth = auth
         self.stream = None
         self.bytes = b''
+        self.iterator = None
         
     def connect(self):
         try:
             # Usar auth si existe
-            self.stream = requests.get(self.url, stream=True, timeout=5, auth=self.auth)
+            if self.stream:
+                self.stream.close()
+            
+            self.stream = requests.get(self.url, stream=True, timeout=10, auth=self.auth)
             if self.stream.status_code == 200:
+                self.iterator = self.stream.iter_content(chunk_size=4096)
                 print(f"✅ Conexión HTTP (MJPEG) establecida: {self.url}")
                 return True
             else:
@@ -108,40 +113,55 @@ class MjpegReader:
         return False
 
     def read_frame(self):
-        if not self.stream:
+        if not self.iterator:
             if not self.connect():
                 return None
         
         try:
-            # Leer en chunks
-            for chunk in self.stream.iter_content(chunk_size=1024):
-                self.bytes += chunk
+            # Leer hasta encontrar un frame
+            max_loops = 100 # Evitar loop infinito si no hay marcadores
+            loops = 0
+            
+            while loops < max_loops:
+                loops += 1
+                try:
+                    # Usar el iterador persistente
+                    chunk = next(self.iterator)
+                    self.bytes += chunk
+                except StopIteration:
+                    print("⚠️ Stream finalizado por el servidor")
+                    self.iterator = None
+                    return None
+                except Exception as e:
+                    print(f"⚠️ Error leyendo chunk del stream: {e}")
+                    self.iterator = None
+                    return None
                 
                 # Buscar inicio de JPEG (FF D8)
                 a = self.bytes.find(b'\xff\xd8')
+                b = self.bytes.find(b'\xff\xd9')
                 
-                if a != -1:
-                    # Descartar basura antes del inicio (headers HTML, boundaries, etc)
-                    if a > 0:
+                if a != -1 and b != -1:
+                    # Caso: Fin antes que Inicio -> Basura al inicio
+                    if b < a:
                         self.bytes = self.bytes[a:]
-                        a = 0
-                    
-                    # Buscar fin de JPEG (FF D9)
-                    b = self.bytes.find(b'\xff\xd9')
-                    
-                    if b != -1:
-                        jpg = self.bytes[a:b+2]
-                        self.bytes = self.bytes[b+2:] # Guardar el resto para el siguiente frame
+                        continue # Re-evaluar con el buffer limpio
                         
-                        try:
-                            frame = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
-                            if frame is not None:
-                                return frame
-                        except:
-                            pass # Si falla el decode, seguir buscando
+                    # Caso: Inicio ... Fin -> Frame candidato
+                    jpg = self.bytes[a:b+2]
+                    self.bytes = self.bytes[b+2:] # Avanzar buffer
+                    
+                    try:
+                        # Decodificar
+                        frame = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
+                        if frame is not None:
+                            return frame
+                    except:
+                        pass # Si falla el decode, seguimos
+                        
         except Exception as e:
             print(f"⚠️ Error leyendo stream MJPEG: {e}")
-            self.stream = None # Forzar reconexión
+            self.iterator = None # Forzar reconexión
             self.bytes = b'' # Limpiar buffer
             
         return None
@@ -162,17 +182,12 @@ class HttpCamera:
             self.url = int(url)
             self.is_stream = True
         else:
-            # Si es URL, verificamos patrones comunes de stream
             url_lower = url.lower()
-            
-            # CRÍTICO: Detectar explícitamente endpoints de IMAGEN (DVR Hikvision, etc)
-            # EXCEPCIÓN: Si dice "mjpegfeed" O "video", ES stream.
             if "mjpegfeed" in url_lower or "/video" in url_lower:
                 self.is_stream = True
             elif any(x in url_lower for x in ["/picture", "snapshot", ".jpg", ".jpeg"]):
                 self.is_stream = False
             else:
-                # Solo si NO es imagen, buscamos patrones de video
                 self.is_stream = any(x in url_lower for x in ["video", "stream", "mjpeg", "live", "rtsp://"])
         
         if requires_auth and user and password and not self.is_webcam:
@@ -180,109 +195,93 @@ class HttpCamera:
                 self.auth = (user, password)
             else:
                 self.auth = HTTPDigestAuth(user, password)
-            
-            self.basic_auth = (user, password)
         else:
             self.auth = None
-            self.basic_auth = None
             
+        self.lock = threading.Lock()
         self.last_frame = None
-        self.last_success = 0
-        self.cv_cap = None
+        self.running = True
         self.mjpeg_reader = None
         
-        # Inicializar conexión si es stream
+        # Solo iniciar hilo si es un stream continuo
         if self.is_stream:
-            print(f"🎥 Inicializando stream de video: {self.url} (Webcam: {self.is_webcam})")
-            self.connect_stream()
+            print(f"🎥 Inicializando hilo de captura para: {self.url}")
+            self.thread = threading.Thread(target=self.update_loop, daemon=True)
+            self.thread.start()
             
-    def connect_stream(self):
-        """Intenta conectar al stream de video"""
-        if self.cv_cap:
-            self.cv_cap.release()
+    def update_loop(self):
+        """Hilo que lee frames continuamente"""
+        cap = None
+        use_opencv = True # Intentar OpenCV primero
         
-        # Intentar primero con OpenCV
-        self.cv_cap = cv2.VideoCapture(self.url)
-        
-        # Configuración opcional
-        if not self.is_webcam:
-            self.cv_cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        while self.running:
+            frame = None
             
-        if self.cv_cap.isOpened():
-            print(f"✅ Stream conectado (OpenCV): {self.url}")
-        else:
-            print(f"⚠️ Fallo OpenCV. Intentando modo compatibilidad (Requests)...")
-            # Si falla OpenCV, preparar fallback pasando AUTH
-            self.mjpeg_reader = MjpegReader(self.url, self.auth) # FIX: Pasamos auth aquí
-
-    def read(self):
-        """Simula el comportamiento de cap.read() de OpenCV"""
-        # MODO STREAM (RTSP, MJPEG, Webcam)
-        if self.is_stream:
-            # 1. Intentar leer con OpenCV
-            if self.cv_cap and self.cv_cap.isOpened():
-                ret, frame = self.cv_cap.read()
-                if ret and frame is not None:
-                    self.last_frame = frame
-                    self.last_success = time.time()
-                    return True, frame
+            # 1. Intentar con OpenCV
+            if use_opencv:
+                if cap is None or not cap.isOpened():
+                    cap = cv2.VideoCapture(self.url)
+                    if not self.is_webcam:
+                        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                
+                if cap and cap.isOpened():
+                    ret, f = cap.read()
+                    if ret and f is not None:
+                        frame = f
+                    else:
+                        print(f"⚠️ OpenCV falló leyendo {self.url}, cambiando a MJPEG Reader")
+                        use_opencv = False
+                        if cap: cap.release()
+                else:
+                     use_opencv = False
             
-            # 2. Si OpenCV falla, intentar con Fallback MjpegReader
-            if not self.is_webcam: # Solo válido para streams de red
-                if not self.mjpeg_reader:
-                    self.mjpeg_reader = MjpegReader(self.url, self.auth) # FIX: Pasamos auth aquí también
+            # 2. Fallback MJPEG (Solo si no es webcam local)
+            if not use_opencv and not self.is_webcam:
+                if self.mjpeg_reader is None:
+                    self.mjpeg_reader = MjpegReader(self.url, self.auth)
                 
                 frame = self.mjpeg_reader.read_frame()
-                if frame is not None:
+                if frame is None:
+                    time.sleep(1) # Esperar antes de reintentar
+                    # Opcional: Reintentar OpenCV después de un tiempo?
+            
+            # Actualizar frame seguro
+            if frame is not None:
+                with self.lock:
                     self.last_frame = frame
-                    self.last_success = time.time()
-                    return True, frame
+            else:
+                time.sleep(0.01) # Evitar consumo excesivo CPU si falla todo
 
-            # Si ambos fallan, intentar reconexión con delay
-            current_time = time.time()
-            if current_time - self.last_success > 5:
-                print("⚠️ Reconectando stream...")
-                self.connect_stream()
-                self.last_success = current_time
-            return False, self.last_frame
+    def read(self):
+        """Devuelve el último frame capturado de forma thread-safe"""
+        if self.is_stream:
+            with self.lock:
+                if self.last_frame is not None:
+                    return True, self.last_frame.copy()
+            return False, None
         
-        # MODO SNAPSHOT (existente...)
+        # MODO SNAPSHOT (Sin hilos, bajo demanda)
         try:
-            # Intentar descargar imagen (timeout corto para no bloquear)
             if self.requires_auth and self.auth:
                 response = requests.get(self.url, auth=self.auth, timeout=2)
-                
-                if response.status_code != 200:
-                    # Intentar Basic Auth si falla
-                    response = requests.get(self.url, auth=self.basic_auth, timeout=2)
             else:
-                # Sin autenticación
                 response = requests.get(self.url, timeout=2)
             
             if response.status_code == 200:
-                # Convertir bytes a imagen OpenCV
                 image_array = np.frombuffer(response.content, np.uint8)
                 frame = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
-                
                 if frame is not None:
-                    self.last_frame = frame
-                    self.last_success = time.time()
                     return True, frame
-            
-            print(f"⚠️ Error HTTP: {response.status_code}")
-            return False, self.last_frame
+            return False, None
             
         except Exception as e:
-            print(f"❌ Error conexión cámara: {e}")
-            return False, self.last_frame
+            print(f"❌ Error snapshot: {e}")
+            return False, None
 
     def release(self):
-        if self.cv_cap:
-            self.cv_cap.release()
+        self.running = False
     
     def isOpened(self):
-        if self.cv_cap:
-            return self.cv_cap.isOpened()
         return True
 
 def get_video_capture(source, camera_id=None):
@@ -413,6 +412,10 @@ def get_camera_instance(camera_id):
 @app.route('/api/video/feed', methods=['GET'])
 def video_feed():
     camera_id = request.args.get('cameraId', 'default')
+    # Force default to mobile
+    if camera_id == 'default':
+        camera_id = 'mobile'
+        
     raw_mode = request.args.get('raw', 'false').lower() == 'true'
     zones = camera_zones.get(camera_id, []) 
     
@@ -463,6 +466,10 @@ def video_feed():
 @app.route('/api/parking/status', methods=['GET'])
 def get_parking_status():
     camera_id = request.args.get('cameraId', 'default')
+    # Force default to mobile
+    if camera_id == 'default':
+        camera_id = 'mobile'
+
     state = camera_current_state.get(camera_id)
     zones = camera_zones.get(camera_id, DEFAULT_PARKING_ZONES)
     
@@ -511,6 +518,8 @@ def config_page():
 def get_snapshot():
     """Retorna una imagen estática actual de la cámara solicitada (usando conexión persistente)"""
     camera_id = request.args.get('cameraId', 'default')
+    if camera_id == 'default':
+        camera_id = 'mobile'
     
     # Usar instancia persistente
     cap = get_camera_instance(camera_id)

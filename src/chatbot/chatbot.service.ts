@@ -8,7 +8,7 @@ import { CameraService } from '../camera/camera.service';
 
 enum ChatState {
   MAIN_MENU = 'MAIN_MENU',
-  MEDICAL_MENU = 'MEDICAL_MENU',
+  MAQUETA_MENU = 'MAQUETA_MENU',
 }
 
 interface UserSession {
@@ -59,7 +59,7 @@ export class ChatbotService {
 
       // 0. Verificar agradecimientos globales (intercepta antes de la máquina de estados)
       if (cleanMessage.includes('gracias') || cleanMessage.includes('agradecid') || cleanMessage.includes('thank')) {
-        const currentMenu = session.state === ChatState.MAIN_MENU ? this.getMainMenuText() : this.getMedicalMenuText();
+        const currentMenu = session.state === ChatState.MAIN_MENU ? this.getMainMenuText() : this.getMaquetaMenuText();
         responseText = `¡De nada! Es un placer ayudarte. 😊\n\n¿Deseas consultar algo más?\n\n${currentMenu}`;
         // No cambiamos el estado, nos quedamos donde estábamos
         return this.generateResponse(responseText, session.state);
@@ -68,24 +68,24 @@ export class ChatbotService {
       // Máquina de estados
       switch (session.state) {
         case ChatState.MAIN_MENU:
-          // Variaciones extendidas para MedicalPluss
+          // Variaciones extendidas para Maqueta de Prueba
           if (
             cleanMessage === '1' || 
             cleanMessage.startsWith('1.') || 
-            cleanMessage.includes('medical') || 
-            cleanMessage.includes('plus') || 
-            cleanMessage.includes('medica') ||
+            cleanMessage.includes('maqueta') || 
+            cleanMessage.includes('prueba') || 
+            cleanMessage.includes('test') ||
             cleanMessage.includes('uno')
           ) {
-            responseText = this.getMedicalMenuText();
-            nextState = ChatState.MEDICAL_MENU;
+            responseText = this.getMaquetaMenuText();
+            nextState = ChatState.MAQUETA_MENU;
           } else {
             // Mensaje de error profesional para menú principal
-            responseText = `❌ *Lo sentimos, opción incorrecta.*\n\nNo hemos podido reconocer tu comando. Por favor selecciona una opción válida:\n\n1. MedicalPluss`;
+            responseText = `❌ *Lo sentimos, opción incorrecta.*\n\nNo hemos podido reconocer tu comando. Por favor selecciona una opción válida:\n\n1. Maqueta de Prueba`;
           }
           break;
 
-        case ChatState.MEDICAL_MENU:
+        case ChatState.MAQUETA_MENU:
           // Variaciones extendidas para Estacionamiento
           if (
             cleanMessage === '1' || 
@@ -101,7 +101,7 @@ export class ChatbotService {
             this.logger.log('📊 Consultando estadísticas de estacionamiento...');
             responseText = await this.getParkingStatsText();
             // Mantenemos el estado para que pueda seguir consultando
-            responseText += `\n\n¿Deseas consultar algo más?\n${this.getMedicalMenuText()}`;
+            responseText += `\n\n¿Deseas consultar algo más?\n${this.getMaquetaMenuText()}`;
           } 
           // Variaciones extendidas para Ayuda/Reportar
           else if (
@@ -115,7 +115,7 @@ export class ChatbotService {
             cleanMessage.includes('llamar')
           ) {
             // Ayuda / Reportar
-            responseText = `ℹ️ *Reportar o Ayuda*\n\nSi necesitas asistencia técnica, reportar un problema o recibir más información, por favor comunícate directamente con nosotros:\n\n📞 *Contacto:* +593 987156456\n\nSelecciona una opción del menú para continuar:\n${this.getMedicalMenuText()}`;
+            responseText = `ℹ️ *Reportar o Ayuda*\n\nSi necesitas asistencia técnica, reportar un problema o recibir más información, por favor comunícate directamente con nosotros:\n\n📞 *Contacto:* +593 987156456\n\nSelecciona una opción del menú para continuar:\n${this.getMaquetaMenuText()}`;
           } 
           // Variaciones extendidas para Regresar
           else if (
@@ -156,11 +156,11 @@ export class ChatbotService {
   }
 
   private getMainMenuText(): string {
-    return `🚗 *Bienvenido a Parking IA*\n\nPor favor selecciona el lugar que deseas consultar:\n\n1. MedicalPluss`;
+    return `🚗 *Bienvenido a Parking IA*\n\nPor favor selecciona el lugar que deseas consultar:\n\n1. Maqueta de Prueba`;
   }
 
-  private getMedicalMenuText(): string {
-    return `🏥 *Menú MedicalPluss*\n\n¿Qué deseas consultar?\n\n1. Estacionamiento (Ver disponibilidad)\n2. Reportar o Ayuda\n0. Regresar al menú principal`;
+  private getMaquetaMenuText(): string {
+    return `🏗️ *Menú Maqueta de Prueba*\n\n¿Qué deseas consultar?\n\n1. Estacionamiento (Ver disponibilidad)\n2. Reportar o Ayuda\n0. Regresar al menú principal`;
   }
 
   private async getParkingStatsText(): Promise<string> {
