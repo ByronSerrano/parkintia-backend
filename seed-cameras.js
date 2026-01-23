@@ -4,12 +4,20 @@ async function seedCameras() {
   try {
     console.log('🚀 Iniciando creación de cámaras...');
 
-    // 1. Obtener cámaras existentes
+    // 1. Obtener y BORRAR cámaras existentes
     let existingCameras = [];
     try {
         const getResponse = await fetch(`${API_URL}/camera`);
         if (getResponse.ok) {
             existingCameras = await getResponse.json();
+            
+            // Borrar todas las cámaras existentes
+            for (const existing of existingCameras) {
+                console.log(`🗑️ Eliminando cámara existente: "${existing.name}" (ID: ${existing.id})...`);
+                await fetch(`${API_URL}/camera/${existing.id}`, { method: 'DELETE' });
+            }
+            // Limpiar lista local
+            existingCameras = []; 
         } else {
             console.warn('⚠️ No se pudieron obtener las cámaras existentes. Asumiendo vacío.');
         }
@@ -19,19 +27,11 @@ async function seedCameras() {
 
     const cameras = [
       {
-        name: 'Cámara 08 (Principal)',
-        description: 'Entrada Principal - Zona A',
+        name: 'Cámara Móvil',
+        description: 'Cámara IP Celular - Pruebas',
         videoFile: 'stream',
-        streamUrl: 'cam-08',
-        total_parking: 10,
-        isActive: true
-      },
-      {
-        name: 'Cámara 01 (Secundaria)',
-        description: 'Parqueadero Lateral - Zona B',
-        videoFile: 'stream',
-        streamUrl: 'cam-01',
-        total_parking: 8,
+        streamUrl: 'mobile',
+        total_parking: 6,
         isActive: true
       }
     ];

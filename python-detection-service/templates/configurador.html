@@ -30,8 +30,7 @@
             <div style="margin-bottom: 15px;">
                 <label>Seleccionar Cámara para configurar:</label>
                 <select id="cameraSelect" onchange="changeCamera()">
-                    <option value="cam-08">Cámara 8 (Principal)</option>
-                    <option value="cam-01">Cámara 1 (Secundaria)</option>
+                    <option value="mobile">Cargando cámaras...</option>
                 </select>
             </div>
             <canvas id="parkingCanvas" width="1020" height="500"></canvas>
@@ -67,12 +66,14 @@
         let currentPoints = [];
         let backgroundImage = new Image();
         let currentCameraId = 'cam-08';
+        let streamImage = new Image(); // Imagen para el stream
+        let isStreamLoaded = false;
 
         async function changeCamera() {
             currentCameraId = cameraSelect.value;
             currentPoints = [];
             await loadSavedZones();
-            loadCameraImage();
+            startStream();
         }
 
         async function loadSavedZones() {
@@ -82,20 +83,60 @@
                 if (data.success) {
                     zones = data.zones;
                     updateZoneList();
-                    draw();
                 }
             } catch (e) {
                 console.error("Error cargando zonas:", e);
             }
         }
 
-        function loadCameraImage() {
-            const img = new Image();
-            img.src = `/api/snapshot?cameraId=${currentCameraId}&t=` + new Date().getTime();
-            img.onload = () => {
-                backgroundImage = img;
-                draw();
+        function startStream() {
+            // Usar el stream RAW (sin IA) para máxima velocidad
+            streamImage.src = `/api/video/feed?cameraId=${currentCameraId}&raw=true&t=` + new Date().getTime();
+            streamImage.onload = () => {
+                isStreamLoaded = true;
             };
+        }
+
+        function gameLoop() {
+            // Dibujado continuo (60fps si es posible)
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 1. Dibujar Video de fondo
+            if (streamImage.complete && streamImage.naturalWidth > 0) {
+                ctx.drawImage(streamImage, 0, 0, canvas.width, canvas.height);
+            } else if (backgroundImage.src) {
+                // Fallback a imagen estática si existe
+                ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+            }
+            
+            // 2. Dibujar Zonas (Polígonos)
+            zones.forEach(zone => {
+                ctx.beginPath();
+                ctx.moveTo(zone.coordinates[0].x, zone.coordinates[0].y);
+                zone.coordinates.forEach(p => ctx.lineTo(p.x, p.y));
+                ctx.closePath();
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.fillStyle = 'rgba(0, 255, 0, 0.2)';
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.fillText(zone.spaceNumber, zone.coordinates[0].x, zone.coordinates[0].y - 5);
+            });
+
+            // 3. Dibujar puntos actuales (si estoy dibujando)
+            if (currentPoints.length > 0) {
+                ctx.beginPath();
+                ctx.moveTo(currentPoints[0].x, currentPoints[0].y);
+                currentPoints.forEach(p => ctx.lineTo(p.x, p.y));
+                ctx.strokeStyle = 'yellow';
+                ctx.stroke();
+                currentPoints.forEach(p => {
+                    ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fillStyle = 'yellow'; ctx.fill();
+                });
+            }
+            
+            requestAnimationFrame(gameLoop);
         }
 
         canvas.addEventListener('mousedown', (e) => {
@@ -107,7 +148,6 @@
                 addZone(currentPoints);
                 currentPoints = [];
             }
-            draw();
         });
 
         function addZone(points) {
@@ -135,14 +175,13 @@
             zones.splice(index, 1);
             zones.forEach((z, i) => z.spaceNumber = i + 1);
             updateZoneList();
-            draw();
         }
 
         function deleteAllZones() {
-            if(confirm("¿Borrar todo?")) { zones = []; currentPoints = []; updateZoneList(); draw(); }
+            if(confirm("¿Borrar todo?")) { zones = []; currentPoints = []; updateZoneList(); }
         }
 
-        function clearLastPoint() { currentPoints.pop(); draw(); }
+        function clearLastPoint() { currentPoints.pop(); }
 
         async function saveConfiguration() {
             if (zones.length === 0) { alert("Dibuja al menos una zona."); return; }
@@ -157,43 +196,40 @@
             } catch (e) { alert("❌ Error: " + e); }
         }
 
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if (backgroundImage.src) ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
-            
-            zones.forEach(zone => {
-                ctx.beginPath();
-                ctx.moveTo(zone.coordinates[0].x, zone.coordinates[0].y);
-                zone.coordinates.forEach(p => ctx.lineTo(p.x, p.y));
-                ctx.closePath();
-                ctx.strokeStyle = '#00ff00';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                ctx.fillStyle = 'rgba(0, 255, 0, 0.2)';
-                ctx.fill();
-                ctx.fillStyle = 'white';
-                ctx.fillText(zone.spaceNumber, zone.coordinates[0].x, zone.coordinates[0].y - 5);
-            });
-
-            if (currentPoints.length > 0) {
-                ctx.beginPath();
-                ctx.moveTo(currentPoints[0].x, currentPoints[0].y);
-                currentPoints.forEach(p => ctx.lineTo(p.x, p.y));
-                ctx.strokeStyle = 'yellow';
-                ctx.stroke();
-                currentPoints.forEach(p => {
-                    ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fillStyle = 'yellow'; ctx.fill();
-                });
+        // NO NECESITAMOS draw() separado, todo está en gameLoop
+        
+        async function loadCameras() {
+            try {
+                const response = await fetch('/api/cameras/list');
+                const data = await response.json();
+                if (data.success) {
+                    cameraSelect.innerHTML = '';
+                    data.cameras.forEach(cam => {
+                        const option = document.createElement('option');
+                        option.value = cam.id;
+                        option.text = `${cam.id} (${cam.url === 0 ? 'Webcam USB' : 'IP Camera'})`;
+                        if (cam.id === 'mobile') option.selected = true; 
+                        cameraSelect.appendChild(option);
+                    });
+                    if (!data.cameras.find(c => c.id === 'mobile') && data.cameras.length > 0) {
+                        cameraSelect.value = data.cameras[0].id;
+                    }
+                    currentCameraId = cameraSelect.value;
+                }
+            } catch (e) {
+                console.error("Error loading cameras:", e);
             }
         }
 
         async function init() {
+            await loadCameras();
             await loadSavedZones();
-            loadCameraImage();
+            startStream(); // Iniciar stream en lugar de snapshot estático
+            requestAnimationFrame(gameLoop); // Iniciar loop de renderizado
         }
 
         init();
-        setInterval(loadCameraImage, 10000); 
+        // setInterval(loadCameraImage, 500); // ELIMINADO
     </script>
 </body>
 </html>

@@ -23,18 +23,9 @@ export const dataBaseConfig: DataSourceOptions = {
   ],
   migrations: [__dirname + '/../migrations/*{.ts,.js}'],
   synchronize: true,
-  // ssl: {
-  //   rejectUnauthorized: false,
-  //   ca: fs
-  //     .readFileSync(
-  //       path.join(
-  //         __dirname,
-  //         '../../',
-  //         dbSslFile,
-  //       ),
-  //     )
-  //     .toString(),
-  // },
+  ssl: {
+    rejectUnauthorized: false,
+  },
 };
 
 const dataSource = new DataSource(dataBaseConfig);

@@ -1,3 +1,5 @@
+
+
 from flask import Flask, request, jsonify, Response, render_template
 from flask_cors import CORS
 import cv2
@@ -22,17 +24,16 @@ DEFAULT_USER = os.environ.get("CAMERA_USER", "jdaza")
 DEFAULT_PASS = os.environ.get("CAMERA_PASS", "Jdaza2026.")
 
 # Diccionario de cámaras disponibles
+# Si MOBILE_CAMERA_URL es un número (ej "0"), se usará como webcam USB/Local
+mobile_url = os.environ.get("MOBILE_CAMERA_URL", "http://192.168.100.157:8081/video") 
+
 CAMERAS = {
-    "default": f"http://{DEFAULT_CAMERA_IP}/ISAPI/Streaming/channels/801/picture", # Por defecto Cam 8
-    "cam-08": f"http://{DEFAULT_CAMERA_IP}/ISAPI/Streaming/channels/801/picture",
-    "cam-01": f"http://{DEFAULT_CAMERA_IP}/ISAPI/Streaming/channels/101/picture", # Nueva Cam 1
+    "mobile": mobile_url, 
 }
 
 # Configuración de cámaras (indica si necesita auth)
 CAMERA_CONFIG = {
-    "default": {"requires_auth": True},
-    "cam-08": {"requires_auth": True},
-    "cam-01": {"requires_auth": True},
+    "mobile": {"requires_auth": False},
 }
 
 # ==========================================
@@ -84,48 +85,168 @@ else:
     DEFAULT_PARKING_ZONES = [] # Ya tenemos zonas reales
 
 # ==========================================
+# CLASE HELPER PARA MJPEG (FALLBACK)
+# ==========================================
+class MjpegReader:
+    def __init__(self, url, auth=None):
+        self.url = url
+        self.auth = auth
+        self.stream = None
+        self.bytes = b''
+        
+    def connect(self):
+        try:
+            # Usar auth si existe
+            self.stream = requests.get(self.url, stream=True, timeout=5, auth=self.auth)
+            if self.stream.status_code == 200:
+                print(f"✅ Conexión HTTP (MJPEG) establecida: {self.url}")
+                return True
+            else:
+                print(f"❌ Error conexión MJPEG: Status {self.stream.status_code}")
+        except Exception as e:
+            print(f"❌ Error conexión MJPEG: {e}")
+        return False
+
+    def read_frame(self):
+        if not self.stream:
+            if not self.connect():
+                return None
+        
+        try:
+            # Leer en chunks
+            for chunk in self.stream.iter_content(chunk_size=1024):
+                self.bytes += chunk
+                
+                # Buscar inicio de JPEG (FF D8)
+                a = self.bytes.find(b'\xff\xd8')
+                
+                if a != -1:
+                    # Descartar basura antes del inicio (headers HTML, boundaries, etc)
+                    if a > 0:
+                        self.bytes = self.bytes[a:]
+                        a = 0
+                    
+                    # Buscar fin de JPEG (FF D9)
+                    b = self.bytes.find(b'\xff\xd9')
+                    
+                    if b != -1:
+                        jpg = self.bytes[a:b+2]
+                        self.bytes = self.bytes[b+2:] # Guardar el resto para el siguiente frame
+                        
+                        try:
+                            frame = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
+                            if frame is not None:
+                                return frame
+                        except:
+                            pass # Si falla el decode, seguir buscando
+        except Exception as e:
+            print(f"⚠️ Error leyendo stream MJPEG: {e}")
+            self.stream = None # Forzar reconexión
+            self.bytes = b'' # Limpiar buffer
+            
+        return None
+
+# ==========================================
 # CLASE DE CÁMARA HTTP (Virtual)
 # ==========================================
 class HttpCamera:
-    def __init__(self, url, user=None, password=None, requires_auth=True):
+    def __init__(self, url, user=None, password=None, requires_auth=True, auth_type='digest'):
         self.url = url
         self.requires_auth = requires_auth
-        self.is_stream = "video" in url.lower()
-        if requires_auth and user and password:
-            self.auth = HTTPDigestAuth(user, password)
+        
+        # Detección inteligente de tipo de stream
+        # Si es un número (int o string numérico), es una webcam local
+        self.is_webcam = isinstance(url, int) or (isinstance(url, str) and url.isdigit())
+        
+        if self.is_webcam:
+            self.url = int(url)
+            self.is_stream = True
+        else:
+            # Si es URL, verificamos patrones comunes de stream
+            url_lower = url.lower()
+            
+            # CRÍTICO: Detectar explícitamente endpoints de IMAGEN (DVR Hikvision, etc)
+            # EXCEPCIÓN: Si dice "mjpegfeed" O "video", ES stream.
+            if "mjpegfeed" in url_lower or "/video" in url_lower:
+                self.is_stream = True
+            elif any(x in url_lower for x in ["/picture", "snapshot", ".jpg", ".jpeg"]):
+                self.is_stream = False
+            else:
+                # Solo si NO es imagen, buscamos patrones de video
+                self.is_stream = any(x in url_lower for x in ["video", "stream", "mjpeg", "live", "rtsp://"])
+        
+        if requires_auth and user and password and not self.is_webcam:
+            if auth_type == 'basic':
+                self.auth = (user, password)
+            else:
+                self.auth = HTTPDigestAuth(user, password)
+            
             self.basic_auth = (user, password)
         else:
             self.auth = None
             self.basic_auth = None
+            
         self.last_frame = None
         self.last_success = 0
-        self.stream_response = None
         self.cv_cap = None
+        self.mjpeg_reader = None
         
-        # Si es un stream de video (DroidCam), usar OpenCV VideoCapture
+        # Inicializar conexión si es stream
         if self.is_stream:
-            print(f"🎥 Inicializando stream de video: {url}")
-            self.cv_cap = cv2.VideoCapture(url)
-            if self.cv_cap.isOpened():
-                print(f"✅ Stream conectado")
-    
+            print(f"🎥 Inicializando stream de video: {self.url} (Webcam: {self.is_webcam})")
+            self.connect_stream()
+            
+    def connect_stream(self):
+        """Intenta conectar al stream de video"""
+        if self.cv_cap:
+            self.cv_cap.release()
+        
+        # Intentar primero con OpenCV
+        self.cv_cap = cv2.VideoCapture(self.url)
+        
+        # Configuración opcional
+        if not self.is_webcam:
+            self.cv_cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            
+        if self.cv_cap.isOpened():
+            print(f"✅ Stream conectado (OpenCV): {self.url}")
+        else:
+            print(f"⚠️ Fallo OpenCV. Intentando modo compatibilidad (Requests)...")
+            # Si falla OpenCV, preparar fallback pasando AUTH
+            self.mjpeg_reader = MjpegReader(self.url, self.auth) # FIX: Pasamos auth aquí
+
     def read(self):
         """Simula el comportamiento de cap.read() de OpenCV"""
-        # Si es un stream de video, usar VideoCapture
-        if self.is_stream and self.cv_cap:
-            ret, frame = self.cv_cap.read()
-            if ret and frame is not None:
-                self.last_frame = frame
-                self.last_success = time.time()
-                return True, frame
-            else:
-                # Intentar reconectar
+        # MODO STREAM (RTSP, MJPEG, Webcam)
+        if self.is_stream:
+            # 1. Intentar leer con OpenCV
+            if self.cv_cap and self.cv_cap.isOpened():
+                ret, frame = self.cv_cap.read()
+                if ret and frame is not None:
+                    self.last_frame = frame
+                    self.last_success = time.time()
+                    return True, frame
+            
+            # 2. Si OpenCV falla, intentar con Fallback MjpegReader
+            if not self.is_webcam: # Solo válido para streams de red
+                if not self.mjpeg_reader:
+                    self.mjpeg_reader = MjpegReader(self.url, self.auth) # FIX: Pasamos auth aquí también
+                
+                frame = self.mjpeg_reader.read_frame()
+                if frame is not None:
+                    self.last_frame = frame
+                    self.last_success = time.time()
+                    return True, frame
+
+            # Si ambos fallan, intentar reconexión con delay
+            current_time = time.time()
+            if current_time - self.last_success > 5:
                 print("⚠️ Reconectando stream...")
-                self.cv_cap.release()
-                self.cv_cap = cv2.VideoCapture(self.url)
-                return False, self.last_frame
+                self.connect_stream()
+                self.last_success = current_time
+            return False, self.last_frame
         
-        # Para imágenes estáticas (snapshot)
+        # MODO SNAPSHOT (existente...)
         try:
             # Intentar descargar imagen (timeout corto para no bloquear)
             if self.requires_auth and self.auth:
@@ -135,7 +256,7 @@ class HttpCamera:
                     # Intentar Basic Auth si falla
                     response = requests.get(self.url, auth=self.basic_auth, timeout=2)
             else:
-                # Sin autenticación (para iPhone/móviles)
+                # Sin autenticación
                 response = requests.get(self.url, timeout=2)
             
             if response.status_code == 200:
@@ -165,20 +286,34 @@ class HttpCamera:
         return True
 
 def get_video_capture(source, camera_id=None):
-    """Factory que decide si usar OpenCV normal o nuestra cámara HTTP"""
-    if str(source).startswith("http"):
-        # Verificar si la cámara requiere autenticación
+    """Factory que devuelve nuestra clase HttpCamera mejorada"""
+    # Si es un número o string numérico, es índice de webcam
+    if isinstance(source, int) or (isinstance(source, str) and source.isdigit()):
+        return HttpCamera(source, requires_auth=False)
+        
+    # Si es URL
+    if str(source).startswith("http") or str(source).startswith("rtsp"):
+        # Configuración por defecto (Global)
+        user = DEFAULT_USER
+        password = DEFAULT_PASS
         requires_auth = True
-        if camera_id and camera_id in CAMERA_CONFIG:
+        auth_type = 'digest' # Default
+        
+        # Lógica específica para móvil
+        if camera_id == 'mobile':
+            user = os.environ.get("MOBILE_USER", "admin")
+            password = os.environ.get("MOBILE_PASS", "admin")
+            requires_auth = True
+            auth_type = 'basic' # Forzar Basic Auth
+        
+        # Lógica para otras cámaras definida en CAMERA_CONFIG
+        elif camera_id and camera_id in CAMERA_CONFIG:
             requires_auth = CAMERA_CONFIG[camera_id].get("requires_auth", True)
         
-        if requires_auth:
-            return HttpCamera(source, DEFAULT_USER, DEFAULT_PASS, requires_auth=True)
-        else:
-            return HttpCamera(source, requires_auth=False)
-    else:
-        # Usar OpenCV normal (archivos, webcam usb, o rtsp legacy)
-        return cv2.VideoCapture(source)
+        return HttpCamera(source, user, password, requires_auth=requires_auth, auth_type=auth_type)
+    
+    # Fallback para archivos locales u otros strings
+    return cv2.VideoCapture(source)
 
 # ==========================================
 # LÓGICA DE DETECCIÓN
@@ -249,47 +384,79 @@ def annotate_frame(frame, zones, zone_occupancy, vehicles):
     return annotated
 
 # ==========================================
+# GESTIÓN DE INSTANCIAS DE CÁMARA (SINGLETON)
+# ==========================================
+camera_instances = {}
+
+def get_camera_instance(camera_id):
+    """Obtiene o crea una instancia de cámara persistente"""
+    global camera_instances
+    
+    # Si ya existe, devolver la activa
+    if camera_id in camera_instances:
+        return camera_instances[camera_id]
+    
+    # Si no, crear una nueva
+    camera_url = CAMERAS.get(camera_id)
+    if not camera_url:
+        print(f"⚠️ Cámara no encontrada: {camera_id}")
+        return None
+
+    print(f"🔌 Creando nueva conexión para: {camera_id} -> {camera_url}")
+    instance = get_video_capture(camera_url, camera_id)
+    camera_instances[camera_id] = instance
+    return instance
+
+# ==========================================
 # ENDPOINTS
 # ==========================================
 @app.route('/api/video/feed', methods=['GET'])
 def video_feed():
     camera_id = request.args.get('cameraId', 'default')
-    zones = camera_zones.get(camera_id, []) # Sin zonas por defecto para nuevas cámaras
+    raw_mode = request.args.get('raw', 'false').lower() == 'true'
+    zones = camera_zones.get(camera_id, []) 
     
-    # Obtener URL específica o fallback a default
-    camera_url = CAMERAS.get(camera_id, CAMERAS['default'])
-    
-    # Instanciar cámara HTTP con la URL correcta
-    cap = get_video_capture(camera_url, camera_id)
+    # Usar instancia persistente
+    cap = get_camera_instance(camera_id)
     
     def generate():
         while True:
             ret, frame = cap.read()
             if not ret or frame is None:
-                time.sleep(0.5)
+                time.sleep(0.01) # Reintento muy rápido
                 continue
             
             # Redimensionar estándar
-            frame = cv2.resize(frame, (1020, 500))
+            try:
+                frame = cv2.resize(frame, (1020, 500))
+            except:
+                pass
             
-            vehicles, occupancy, _ = detect_vehicles_in_frame(frame, zones)
-            
-            # Actualizar estado global
-            camera_current_state[camera_id] = {
-                'zone_occupancy': occupancy,
-                'occupied_count': sum(occupancy.values()),
-                'last_update': time.time()
-            }
-            
-            annotated = annotate_frame(frame, zones, occupancy, vehicles)
-            
-            ret, buffer = cv2.imencode('.jpg', annotated)
+            if not raw_mode:
+                # MODO DETECCIÓN (Normal)
+                vehicles, occupancy, _ = detect_vehicles_in_frame(frame, zones)
+                
+                # Actualizar estado global
+                camera_current_state[camera_id] = {
+                    'zone_occupancy': occupancy,
+                    'occupied_count': sum(occupancy.values()),
+                    'last_update': time.time()
+                }
+                
+                annotated = annotate_frame(frame, zones, occupancy, vehicles)
+                frame_to_send = annotated
+            else:
+                # MODO RAW / CONFIGURACIÓN (Sin IA, super rápido)
+                frame_to_send = frame
+
+            ret, buffer = cv2.imencode('.jpg', frame_to_send)
             frame_bytes = buffer.tobytes()
             
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
             
-            time.sleep(0.5)
+            # Streaming fluido: sleep mínimo
+            time.sleep(0.01)
 
     return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
@@ -342,16 +509,27 @@ def config_page():
 
 @app.route('/api/snapshot')
 def get_snapshot():
-    """Retorna una imagen estática actual de la cámara solicitada"""
+    """Retorna una imagen estática actual de la cámara solicitada (usando conexión persistente)"""
     camera_id = request.args.get('cameraId', 'default')
-    camera_url = CAMERAS.get(camera_id, CAMERAS['default'])
     
-    cap = get_video_capture(camera_url, camera_id)
+    # Usar instancia persistente
+    cap = get_camera_instance(camera_id)
+    
+    # Intentar leer frame actual
     ret, frame = cap.read()
-    if ret and frame is not None:
-        frame = cv2.resize(frame, (1020, 500))
-        ret, buffer = cv2.imencode('.jpg', frame)
-        return Response(buffer.tobytes(), mimetype='image/jpeg')
+    
+    # Si falla, intentar devolver el último frame conocido (caché)
+    if not ret or frame is None:
+        frame = cap.last_frame
+        
+    if frame is not None:
+        try:
+            frame = cv2.resize(frame, (1020, 500))
+            ret, buffer = cv2.imencode('.jpg', frame)
+            return Response(buffer.tobytes(), mimetype='image/jpeg')
+        except Exception as e:
+            print(f"Error procesando snapshot: {e}")
+            
     return "Error getting snapshot", 500
 
 @app.route('/api/cameras/add', methods=['POST'])
@@ -362,7 +540,7 @@ def add_camera():
     camera_url = data.get('url')
     requires_auth = data.get('requiresAuth', False)
     
-    if not camera_id or not camera_url:
+    if not camera_id or camera_url is None: # url puede ser 0
         return jsonify({'success': False, 'error': 'cameraId y url son requeridos'}), 400
     
     CAMERAS[camera_id] = camera_url
