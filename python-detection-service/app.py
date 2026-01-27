@@ -25,7 +25,7 @@ DEFAULT_PASS = os.environ.get("CAMERA_PASS", "Jdaza2026.")
 
 # Diccionario de cámaras disponibles
 # Si MOBILE_CAMERA_URL es un número (ej "0"), se usará como webcam USB/Local
-mobile_url = os.environ.get("MOBILE_CAMERA_URL", "http://192.168.216.40:8081/video") 
+mobile_url = os.environ.get("MOBILE_CAMERA_URL", "http://192.168.209.25:8081/video") 
 
 CAMERAS = {
     "mobile": mobile_url, 
@@ -39,7 +39,7 @@ CAMERA_CONFIG = {
 # ==========================================
 # MODELO Y VARIABLES GLOBALES
 # ==========================================
-model = YOLO('yolov8s.pt')
+model = YOLO('models/yolov8s.pt')
 try:
     with open("coco.txt", "r") as f:
         class_list = f.read().split("\n")
