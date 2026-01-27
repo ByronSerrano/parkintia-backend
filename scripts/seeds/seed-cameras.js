@@ -7,14 +7,14 @@ async function seedCameras() {
     // 1. Obtener y BORRAR cámaras existentes
     let existingCameras = [];
     try {
-        const getResponse = await fetch(`${API_URL}/camera`);
+        const getResponse = await fetch(`${API_URL}/cameras`);
         if (getResponse.ok) {
             existingCameras = await getResponse.json();
             
             // Borrar todas las cámaras existentes
             for (const existing of existingCameras) {
                 console.log(`🗑️ Eliminando cámara existente: "${existing.name}" (ID: ${existing.id})...`);
-                await fetch(`${API_URL}/camera/${existing.id}`, { method: 'DELETE' });
+                await fetch(`${API_URL}/cameras/${existing.id}`, { method: 'DELETE' });
             }
             // Limpiar lista local
             existingCameras = []; 
@@ -42,7 +42,7 @@ async function seedCameras() {
 
         if (existing) {
             console.log(`🔄 Actualizando "${cam.name}"...`);
-            const updateResponse = await fetch(`${API_URL}/camera/${existing.id}`, {
+            const updateResponse = await fetch(`${API_URL}/cameras/${existing.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(cam)
@@ -55,7 +55,7 @@ async function seedCameras() {
             }
         } else {
             console.log(`✨ Creando "${cam.name}"...`);
-            const response = await fetch(`${API_URL}/camera`, {
+            const response = await fetch(`${API_URL}/cameras`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

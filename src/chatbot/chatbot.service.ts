@@ -60,7 +60,7 @@ export class ChatbotService {
       // 0. Verificar agradecimientos globales (intercepta antes de la máquina de estados)
       if (cleanMessage.includes('gracias') || cleanMessage.includes('agradecid') || cleanMessage.includes('thank')) {
         const currentMenu = session.state === ChatState.MAIN_MENU ? this.getMainMenuText() : this.getMaquetaMenuText();
-        responseText = `¡De nada! Es un placer ayudarte. 😊\n\n¿Deseas consultar algo más?\n\n${currentMenu}`;
+        responseText = `A su servicio. ¿Desea realizar alguna otra consulta?\n\n${currentMenu}`;
         // No cambiamos el estado, nos quedamos donde estábamos
         return this.generateResponse(responseText, session.state);
       }
@@ -81,7 +81,7 @@ export class ChatbotService {
             nextState = ChatState.MAQUETA_MENU;
           } else {
             // Mensaje de error profesional para menú principal
-            responseText = `❌ *Lo sentimos, opción incorrecta.*\n\nNo hemos podido reconocer tu comando. Por favor selecciona una opción válida:\n\n1. Maqueta de Prueba`;
+            responseText = `*Opción no válida.*\n\nEl comando ingresado no ha sido reconocido. Por favor seleccione una de las opciones disponibles:\n\n1. Maqueta de Prueba`;
           }
           break;
 
@@ -101,7 +101,7 @@ export class ChatbotService {
             this.logger.log('📊 Consultando estadísticas de estacionamiento...');
             responseText = await this.getParkingStatsText();
             // Mantenemos el estado para que pueda seguir consultando
-            responseText += `\n\n¿Deseas consultar algo más?\n${this.getMaquetaMenuText()}`;
+            responseText += `\n\n¿Desea realizar alguna otra consulta?\n${this.getMaquetaMenuText()}`;
           } 
           // Variaciones extendidas para Ayuda/Reportar
           else if (
@@ -115,7 +115,7 @@ export class ChatbotService {
             cleanMessage.includes('llamar')
           ) {
             // Ayuda / Reportar
-            responseText = `ℹ️ *Reportar o Ayuda*\n\nSi necesitas asistencia técnica, reportar un problema o recibir más información, por favor comunícate directamente con nosotros:\n\n📞 *Contacto:* +593 987156456\n\nSelecciona una opción del menú para continuar:\n${this.getMaquetaMenuText()}`;
+            responseText = `*Soporte Técnico*\n\nPara reportar inconvenientes o solicitar asistencia, por favor comuníquese a través del siguiente canal:\n\nTeléfono: +593 987156456\n\nSeleccione una opción para continuar:\n${this.getMaquetaMenuText()}`;
           } 
           // Variaciones extendidas para Regresar
           else if (
@@ -132,7 +132,7 @@ export class ChatbotService {
             nextState = ChatState.MAIN_MENU;
           } else {
             // Mensaje de error profesional con opción de regresar
-            responseText = `❌ *Lo sentimos, opción incorrecta.*\n\nPor favor intenta con una de las opciones disponibles:\n\n1. Estacionamiento\n2. Reportar o Ayuda\n0. Regresar al menú principal`;
+            responseText = `*Opción no válida.*\n\nPor favor intente con una de las opciones disponibles:\n\n1. Consultar disponibilidad de estacionamiento\n2. Soporte y reportes\n0. Regresar al menú principal`;
           }
           break;
 
@@ -151,16 +151,16 @@ export class ChatbotService {
 
     } catch (error) {
       this.logger.error('❌ Error procesando mensaje:', error);
-      return this.generateResponse('Lo siento, ocurrió un error interno. Intenta nuevamente más tarde.', 'error');
+      return this.generateResponse('Ha ocurrido un error interno en el sistema. Por favor, intente nuevamente más tarde.', 'error');
     }
   }
 
   private getMainMenuText(): string {
-    return `🚗 *Bienvenido a Parking IA*\n\nPor favor selecciona el lugar que deseas consultar:\n\n1. Maqueta de Prueba`;
+    return `*Sistema de Gestión de Estacionamiento*\n\nBienvenido. Por favor seleccione el área que desea consultar:\n\n1. Maqueta de Prueba`;
   }
 
   private getMaquetaMenuText(): string {
-    return `🏗️ *Menú Maqueta de Prueba*\n\n¿Qué deseas consultar?\n\n1. Estacionamiento (Ver disponibilidad)\n2. Reportar o Ayuda\n0. Regresar al menú principal`;
+    return `*Menú - Maqueta de Prueba*\n\nSeleccione una opción:\n\n1. Consultar disponibilidad de estacionamiento\n2. Soporte y reportes\n0. Regresar al menú principal`;
   }
 
   private async getParkingStatsText(): Promise<string> {
@@ -222,7 +222,7 @@ export class ChatbotService {
 
       const occupancyRate = totalSpaces > 0 ? ((totalOccupied / totalSpaces) * 100).toFixed(1) : '0.0';
 
-      return `📊 *Estado del Estacionamiento*\n\n🚘 Ocupados: ${totalOccupied}\n✅ Disponibles: ${totalFree}\n🔢 Total Espacios: ${totalSpaces}\n📉 Ocupación: ${occupancyRate}%`;
+      return `*Reporte de Disponibilidad*\n\nEspacios Ocupados: ${totalOccupied}\nEspacios Disponibles: ${totalFree}\nCapacidad Total: ${totalSpaces}\nTasa de Ocupación: ${occupancyRate}%`;
 
     } catch (error) {
       this.logger.error('Error calculando estadísticas globales:', error);
