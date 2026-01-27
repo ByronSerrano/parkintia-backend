@@ -16,7 +16,10 @@ import { UserModule } from '../user/user.module';
       useFactory: async (
         configService: ConfigService,
       ): Promise<JwtModuleOptions> => ({
-        secret: configService.get<string>('SECRET_KEY_JWT'),
+        secret: configService.get<string>('SECRET_KEY_JWT') || 'secret-key-1234',
+        signOptions: {
+          expiresIn: '24h',
+        },
       }),
     }),
     UserModule,

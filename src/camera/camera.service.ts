@@ -161,4 +161,54 @@ export class CameraService {
     // Sincronizar con servicio Python
     await this.parkingDetectionService.syncZonesWithPythonService(cameraId);
   }
+
+  // ========== ESTADÍSTICAS GLOBALES ==========
+
+  async getGlobalStats(): Promise<{
+    totalSpaces: number;
+    occupiedSpaces: number;
+    freeSpaces: number;
+    occupancyRate: number;
+    totalCameras: number;
+    activeCameras: number;
+    camerasWithZones: number;
+  }> {
+    // Obtener todas las cámaras con sus zonas
+    const cameras = await this.cameraRepository.find({
+      relations: ['parkingZones'],
+    });
+
+    let totalSpaces = 0;
+    let occupiedSpaces = 0;
+    let activeCameras = 0;
+    let camerasWithZones = 0;
+
+    for (const camera of cameras) {
+      if (camera.isActive) {
+        activeCameras++;
+      }
+
+      if (camera.parkingZones && camera.parkingZones.length > 0) {
+        camerasWithZones++;
+        totalSpaces += camera.parkingZones.length;
+        
+        // Contar espacios ocupados
+        const occupied = camera.parkingZones.filter(zone => zone.isOccupied).length;
+        occupiedSpaces += occupied;
+      }
+    }
+
+    const freeSpaces = totalSpaces - occupiedSpaces;
+    const occupancyRate = totalSpaces > 0 ? (occupiedSpaces / totalSpaces) * 100 : 0;
+
+    return {
+      totalSpaces,
+      occupiedSpaces,
+      freeSpaces,
+      occupancyRate: Math.round(occupancyRate * 100) / 100, // Redondear a 2 decimales
+      totalCameras: cameras.length,
+      activeCameras,
+      camerasWithZones,
+    };
+  }
 }
