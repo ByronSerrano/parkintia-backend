@@ -17,6 +17,12 @@ export class UserController {
     return await this.userService.findAll();
   }
 
+  // Stats endpoint debe estar ANTES de :id para evitar conflictos de routing
+  @Get('stats')
+  async getUserStats() {
+    return await this.userService.getUserStats();
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return await this.userService.findOne(+id);

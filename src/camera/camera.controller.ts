@@ -18,19 +18,21 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { CameraService } from './camera.service';
 import { ParkingDetectionService } from './parking-detection.service';
+import { ParkingHistoryService } from './parking-history.service';
 import { CreateCameraDto } from './dto/create-camera.dto';
 import { UpdateCameraDto } from './dto/update-camera.dto';
 import { CreateParkingZoneDto, UpdateParkingZoneDto, BulkCreateParkingZonesDto } from './dto/parking-zone.dto';
 import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
 
-@Controller('camera')
+@Controller('cameras')
 export class CameraController {
   private readonly pythonServiceUrl: string;
 
   constructor(
     private readonly cameraService: CameraService,
     private readonly parkingDetectionService: ParkingDetectionService,
+    private readonly parkingHistoryService: ParkingHistoryService,
     private readonly configService: ConfigService,
   ) {
     this.pythonServiceUrl = this.configService.get<string>('PYTHON_SERVICE_URL') || 'http://127.0.0.1:5000';
@@ -56,11 +58,26 @@ export class CameraController {
   }
 
   @Get('total-space')
-  getTotalSpace() {
+  async getTotalSpace() {
+    // DEPRECATED: Usar /camera/stats/global en su lugar
+    // Este endpoint se mantiene para retrocompatibilidad pero ahora devuelve datos reales
+    const stats = await this.cameraService.getGlobalStats();
     return {
       message: 'Space in parking',
-      total_count_space: 38
+      total_count_space: stats.totalSpaces,
+      occupied_spaces: stats.occupiedSpaces,
+      free_spaces: stats.freeSpaces,
+      occupancy_rate: stats.occupancyRate,
+      deprecated: true,
+      use_instead: '/camera/stats/global'
     };
+  }
+
+  // ========== ESTADÍSTICAS GLOBALES (BEFORE :id routes) ==========
+
+  @Get('stats/global')
+  async getGlobalStats() {
+    return this.cameraService.getGlobalStats();
   }
 
   // ========== VIDEO STREAMING FROM PYTHON SERVICE (BEFORE :id routes) ==========
@@ -125,13 +142,20 @@ export class CameraController {
     @Query('cameraId') cameraId: string = 'mobile',
   ) {
     try {
-      const response = await axios.get(
-        `${this.pythonServiceUrl}/api/parking/status?cameraId=${cameraId}`,
-      );
+      const url = `${this.pythonServiceUrl}/api/parking/status?cameraId=${cameraId}`;
+      console.log('🔗 Intentando conectar con Python service:', url);
+      const response = await axios.get(url);
+      console.log('✅ Respuesta recibida del Python service');
       return response.data;
     } catch (error) {
+      console.error('❌ Error al conectar con Python service:', error.message);
+      console.error('URL del Python service:', this.pythonServiceUrl);
+      if (error.response) {
+        console.error('Status del error:', error.response.status);
+        console.error('Datos del error:', error.response.data);
+      }
       throw new HttpException(
-        'Failed to get parking status',
+        `Failed to get parking status: ${error.message}`,
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
@@ -276,6 +300,47 @@ export class CameraController {
     }
 
     response.end();
+  }
+
+  // ========== HISTÓRICO Y REPORTES ==========
+
+  @Get('history/occupancy')
+  async getOccupancyHistory(
+    @Query('cameraId') cameraId: string | null,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    return this.parkingHistoryService.getOccupancyHistory(cameraId, start, end);
+  }
+
+  @Get('history/hourly-average')
+  async getHourlyAverage(
+    @Query('cameraId') cameraId: string | null,
+    @Query('days') days?: string,
+  ) {
+    const daysNum = days ? parseInt(days) : 7;
+    return this.parkingHistoryService.getAverageOccupancyByHour(cameraId, daysNum);
+  }
+
+  @Get('history/period-stats')
+  async getPeriodStatistics(
+    @Query('cameraId') cameraId: string | null,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    return this.parkingHistoryService.getPeriodStatistics(cameraId, start, end);
+  }
+
+  @Post('history/snapshot')
+  async saveManualSnapshot() {
+    await this.parkingHistoryService.saveAllCamerasSnapshots();
+    return { success: true, message: 'Snapshots guardados correctamente' };
   }
 }
 

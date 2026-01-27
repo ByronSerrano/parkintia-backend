@@ -22,10 +22,19 @@ export const dataBaseConfig: DataSourceOptions = {
     __dirname + '/../**/entities/*.entity{.ts,.js}',
   ],
   migrations: [__dirname + '/../migrations/*{.ts,.js}'],
-  synchronize: true,
-  ssl: {
-    rejectUnauthorized: false,
-  },
+  synchronize: false,
+  // ssl: {
+  //   rejectUnauthorized: false,
+  //   ca: fs
+  //     .readFileSync(
+  //       path.join(
+  //         __dirname,
+  //         '../../',
+  //         dbSslFile,
+  //       ),
+  //     )
+  //     .toString(),
+  // },
 };
 
 const dataSource = new DataSource(dataBaseConfig);

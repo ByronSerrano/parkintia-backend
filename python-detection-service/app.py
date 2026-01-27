@@ -12,6 +12,7 @@ import requests
 from requests.auth import HTTPDigestAuth
 import os
 import threading
+import torch
 
 app = Flask(__name__)
 CORS(app)
@@ -19,13 +20,13 @@ CORS(app)
 # ==========================================
 # CONFIGURACIÓN DE CÁMARAS
 # ==========================================
-DEFAULT_CAMERA_IP = os.environ.get("CAMERA_IP", "192.168.0.114")
+DEFAULT_CAMERA_IP = os.environ.get("CAMERA_IP", "192.168.209.25")
 DEFAULT_USER = os.environ.get("CAMERA_USER", "jdaza")
 DEFAULT_PASS = os.environ.get("CAMERA_PASS", "Jdaza2026.")
 
 # Diccionario de cámaras disponibles
 # Si MOBILE_CAMERA_URL es un número (ej "0"), se usará como webcam USB/Local
-mobile_url = os.environ.get("MOBILE_CAMERA_URL", "http://192.168.216.40:8081/video") 
+mobile_url = os.environ.get("MOBILE_CAMERA_URL", "http://192.168.209.25:8081/video") 
 
 CAMERAS = {
     "mobile": mobile_url, 
@@ -39,6 +40,17 @@ CAMERA_CONFIG = {
 # ==========================================
 # MODELO Y VARIABLES GLOBALES
 # ==========================================
+# Fix para PyTorch 2.6+ - Hacer monkey patch de torch.load para permitir carga de modelos YOLO
+_original_torch_load = torch.load
+
+def _patched_torch_load(f, map_location=None, *args, **kwargs):
+    # Forzar weights_only=False para cargar modelos YOLO de Ultralytics
+    if 'weights_only' not in kwargs:
+        kwargs['weights_only'] = False
+    return _original_torch_load(f, map_location=map_location, *args, **kwargs)
+
+torch.load = _patched_torch_load
+
 model = YOLO('yolov8s.pt')
 try:
     with open("coco.txt", "r") as f:
