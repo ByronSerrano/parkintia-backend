@@ -8,7 +8,7 @@ import { CameraService } from '../camera/camera.service';
 
 enum ChatState {
   MAIN_MENU = 'MAIN_MENU',
-  MAQUETA_MENU = 'MAQUETA_MENU',
+  MEDICAL_MENU = 'MEDICAL_MENU',
 }
 
 interface UserSession {
@@ -59,7 +59,7 @@ export class ChatbotService {
 
       // 0. Verificar agradecimientos globales (intercepta antes de la máquina de estados)
       if (cleanMessage.includes('gracias') || cleanMessage.includes('agradecid') || cleanMessage.includes('thank')) {
-        const currentMenu = session.state === ChatState.MAIN_MENU ? this.getMainMenuText() : this.getMaquetaMenuText();
+        const currentMenu = session.state === ChatState.MAIN_MENU ? this.getMainMenuText() : this.getMedicalMenuText();
         responseText = `A su servicio. ¿Desea realizar alguna otra consulta?\n\n${currentMenu}`;
         // No cambiamos el estado, nos quedamos donde estábamos
         return this.generateResponse(responseText, session.state);
@@ -68,24 +68,24 @@ export class ChatbotService {
       // Máquina de estados
       switch (session.state) {
         case ChatState.MAIN_MENU:
-          // Variaciones extendidas para Maqueta de Prueba
+          // Variaciones extendidas para MedicalPluss
           if (
             cleanMessage === '1' || 
             cleanMessage.startsWith('1.') || 
-            cleanMessage.includes('maqueta') || 
-            cleanMessage.includes('prueba') || 
-            cleanMessage.includes('test') ||
+            cleanMessage.includes('medical') || 
+            cleanMessage.includes('plus') || 
+            cleanMessage.includes('clinica') ||
             cleanMessage.includes('uno')
           ) {
-            responseText = this.getMaquetaMenuText();
-            nextState = ChatState.MAQUETA_MENU;
+            responseText = this.getMedicalMenuText();
+            nextState = ChatState.MEDICAL_MENU;
           } else {
             // Mensaje de error profesional para menú principal
-            responseText = `*Opción no válida.*\n\nEl comando ingresado no ha sido reconocido. Por favor seleccione una de las opciones disponibles:\n\n1. Maqueta de Prueba`;
+            responseText = `*Opción no válida.*\n\nEl comando ingresado no ha sido reconocido. Por favor seleccione una de las opciones disponibles:\n\n1. MedicalPluss`;
           }
           break;
 
-        case ChatState.MAQUETA_MENU:
+        case ChatState.MEDICAL_MENU:
           // Variaciones extendidas para Estacionamiento
           if (
             cleanMessage === '1' || 
@@ -101,7 +101,7 @@ export class ChatbotService {
             this.logger.log('📊 Consultando estadísticas de estacionamiento...');
             responseText = await this.getParkingStatsText();
             // Mantenemos el estado para que pueda seguir consultando
-            responseText += `\n\n¿Desea realizar alguna otra consulta?\n${this.getMaquetaMenuText()}`;
+            responseText += `\n\n¿Desea realizar alguna otra consulta?\n${this.getMedicalMenuText()}`;
           } 
           // Variaciones extendidas para Ayuda/Reportar
           else if (
@@ -115,7 +115,7 @@ export class ChatbotService {
             cleanMessage.includes('llamar')
           ) {
             // Ayuda / Reportar
-            responseText = `*Soporte Técnico*\n\nPara reportar inconvenientes o solicitar asistencia, por favor comuníquese a través del siguiente canal:\n\nTeléfono: +593 987156456\n\nSeleccione una opción para continuar:\n${this.getMaquetaMenuText()}`;
+            responseText = `*Soporte Técnico*\n\nPara reportar inconvenientes o solicitar asistencia, por favor comuníquese a través del siguiente canal:\n\nTeléfono: +593 987156456\n\nSeleccione una opción para continuar:\n${this.getMedicalMenuText()}`;
           } 
           // Variaciones extendidas para Regresar
           else if (
@@ -156,11 +156,11 @@ export class ChatbotService {
   }
 
   private getMainMenuText(): string {
-    return `*Sistema de Gestión de Estacionamiento*\n\nBienvenido. Por favor seleccione el área que desea consultar:\n\n1. Maqueta de Prueba`;
+    return `*Sistema de Gestión de Estacionamiento*\n\nBienvenido. Por favor seleccione el área que desea consultar:\n\n1. MedicalPluss`;
   }
 
-  private getMaquetaMenuText(): string {
-    return `*Menú - Maqueta de Prueba*\n\nSeleccione una opción:\n\n1. Consultar disponibilidad de estacionamiento\n2. Soporte y reportes\n0. Regresar al menú principal`;
+  private getMedicalMenuText(): string {
+    return `*Menú - MedicalPluss*\n\nSeleccione una opción:\n\n1. Consultar disponibilidad de estacionamiento\n2. Soporte y reportes\n0. Regresar al menú principal`;
   }
 
   private async getParkingStatsText(): Promise<string> {

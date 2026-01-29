@@ -84,7 +84,7 @@ export class CameraController {
 
   @Get('video-feed')
   async videoFeed(
-    @Query('cameraId') cameraId: string = 'mobile',
+    @Query('cameraId') cameraId: string = 'cam-01',
     @Res() response: Response,
   ) {
     try {
@@ -123,7 +123,7 @@ export class CameraController {
     @Body() body: { action: string; cameraId?: string },
   ) {
     try {
-      const { action, cameraId = 'mobile' } = body;
+      const { action, cameraId = 'cam-01' } = body;
       const response = await axios.post(
         `${this.pythonServiceUrl}/api/video/control`,
         { action, cameraId },
@@ -139,7 +139,7 @@ export class CameraController {
 
   @Get('parking-status-live')
   async getParkingStatusLive(
-    @Query('cameraId') cameraId: string = 'mobile',
+    @Query('cameraId') cameraId: string = 'cam-01',
   ) {
     try {
       const url = `${this.pythonServiceUrl}/api/parking/status?cameraId=${cameraId}`;

@@ -30,7 +30,7 @@
             <div style="margin-bottom: 15px;">
                 <label>Seleccionar Cámara para configurar:</label>
                 <select id="cameraSelect" onchange="changeCamera()">
-                    <option value="mobile">Cargando cámaras...</option>
+                    <option value="cam-01">Cargando cámaras...</option>
                 </select>
             </div>
             <canvas id="parkingCanvas" width="1020" height="500"></canvas>
@@ -65,7 +65,7 @@
         let zones = [];
         let currentPoints = [];
         let backgroundImage = new Image();
-        let currentCameraId = 'cam-08';
+        let currentCameraId = 'cam-01';
         let streamImage = new Image(); // Imagen para el stream
         let isStreamLoaded = false;
 
@@ -158,6 +158,7 @@
                 coordinates: [...points]
             });
             updateZoneList();
+            saveConfiguration(true); // Auto-save silent
         }
 
         function updateZoneList() {
@@ -175,16 +176,22 @@
             zones.splice(index, 1);
             zones.forEach((z, i) => z.spaceNumber = i + 1);
             updateZoneList();
+            saveConfiguration(true); // Auto-save silent
         }
 
         function deleteAllZones() {
-            if(confirm("¿Borrar todo?")) { zones = []; currentPoints = []; updateZoneList(); }
+            if(confirm("¿Borrar todo?")) { 
+                zones = []; 
+                currentPoints = []; 
+                updateZoneList(); 
+                saveConfiguration(true); // Auto-save silent
+            }
         }
 
         function clearLastPoint() { currentPoints.pop(); }
 
-        async function saveConfiguration() {
-            if (zones.length === 0) { alert("Dibuja al menos una zona."); return; }
+        async function saveConfiguration(silent = false) {
+            // Permitir guardar 0 zonas (para borrar todo)
             try {
                 const response = await fetch('/api/zones/sync', {
                     method: 'POST',
@@ -192,8 +199,8 @@
                     body: JSON.stringify({ cameraId: currentCameraId, zones: zones })
                 });
                 const res = await response.json();
-                if (res.success) alert("✅ Zonas guardadas para " + currentCameraId);
-            } catch (e) { alert("❌ Error: " + e); }
+                if (res.success && !silent) alert("✅ Zonas guardadas para " + currentCameraId);
+            } catch (e) { if(!silent) alert("❌ Error: " + e); }
         }
 
         // NO NECESITAMOS draw() separado, todo está en gameLoop
@@ -207,11 +214,14 @@
                     data.cameras.forEach(cam => {
                         const option = document.createElement('option');
                         option.value = cam.id;
-                        option.text = `${cam.id} (${cam.url === 0 ? 'Webcam USB' : 'IP Camera'})`;
-                        if (cam.id === 'mobile') option.selected = true; 
+                        option.text = `${cam.id}`;
                         cameraSelect.appendChild(option);
                     });
-                    if (!data.cameras.find(c => c.id === 'mobile') && data.cameras.length > 0) {
+                    
+                    // Seleccionar cam-01 por defecto si existe
+                    if (data.cameras.some(c => c.id === 'cam-01')) {
+                        cameraSelect.value = 'cam-01';
+                    } else if (data.cameras.length > 0) {
                         cameraSelect.value = data.cameras[0].id;
                     }
                     currentCameraId = cameraSelect.value;

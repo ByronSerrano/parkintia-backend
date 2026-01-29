@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:3001';
+const API_URL = 'http://127.0.0.1:3001';
 
 async function seedCameras() {
   try {
@@ -27,11 +27,19 @@ async function seedCameras() {
 
     const cameras = [
       {
-        name: 'Cámara Móvil',
-        description: 'Cámara IP Celular - Pruebas',
-        videoFile: 'stream',
-        streamUrl: 'mobile',
-        total_parking: 6,
+        name: 'Cámara IP 01',
+        description: 'Cámara de Entrada - 01',
+        videoFile: 'cam-01',
+        streamUrl: 'http://192.168.0.114/ISAPI/Streaming/channels/101/picture',
+        total_parking: 0,
+        isActive: true
+      },
+      {
+        name: 'Cámara IP 08',
+        description: 'Cámara de Salida - 08',
+        videoFile: 'cam-08',
+        streamUrl: 'http://192.168.0.114/ISAPI/Streaming/channels/801/picture',
+        total_parking: 0,
         isActive: true
       }
     ];
@@ -74,7 +82,7 @@ async function seedCameras() {
             }
         }
       } catch (error) {
-        console.error(`❌ Error de red procesando "${cam.name}":`, error.message);
+        console.error(`❌ Error de red procesando "${cam.name}":`, error);
       }
     }
 
