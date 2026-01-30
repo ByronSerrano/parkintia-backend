@@ -3,33 +3,579 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configurador de Zonas - ParkingEyes</title>
+    <title>Configurador de Zonas - Parkintia</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: sans-serif; background: #1a1a1a; color: white; margin: 0; padding: 20px; }
-        .container { display: flex; gap: 20px; }
-        .canvas-container { position: relative; }
-        canvas { border: 2px solid #333; cursor: crosshair; background: #000; }
-        .controls { width: 300px; background: #2a2a2a; padding: 20px; border-radius: 8px; }
-        h1 { margin-top: 0; font-size: 1.5rem; color: #007bff; }
-        .btn { display: block; width: 100%; padding: 10px; margin-bottom: 10px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .btn-primary { background: #007bff; color: white; }
-        .btn-danger { background: #dc3545; color: white; }
-        .btn-success { background: #28a745; color: white; }
-        .zone-list { max-height: 400px; overflow-y: auto; margin-top: 20px; }
-        .zone-item { background: #333; padding: 10px; margin-bottom: 5px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
-        .instructions { font-size: 0.9rem; color: #aaa; margin-bottom: 20px; }
-        select { width: 100%; padding: 10px; margin-bottom: 20px; background: #333; color: white; border: 1px solid #444; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
+            background: #f5f5f7;
+            color: #1d1d1f; 
+            min-height: 100vh;
+            padding: 16px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            animation: fadeInDown 0.6s ease-out;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 4px;
+        }
+
+        h1 { 
+            font-size: 1.6rem; 
+            font-weight: 700;
+            color: #1d1d1f;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            color: #6e6e73;
+            font-size: 0.85rem;
+            margin-top: 4px;
+            font-weight: 400;
+        }
+
+        .container { 
+            display: flex; 
+            gap: 24px; 
+            max-width: 1600px;
+            margin: 0 auto;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        .canvas-container { 
+            flex: 1;
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .camera-select-wrapper {
+            margin-bottom: 12px;
+        }
+
+        .camera-select-wrapper label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #6e6e73;
+            margin-bottom: 10px;
+        }
+
+        .camera-select-wrapper label i {
+            color: #2c3e50;
+        }
+
+        canvas { 
+            border: 2px solid #e5e5e7;
+            cursor: crosshair; 
+            background: #000; 
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: border-color 0.3s ease;
+            width: 100%;
+            max-width: 100%;
+            display: block;
+            touch-action: none;
+        }
+
+        canvas:hover {
+            border-color: #2c3e50;
+        }
+
+        .controls { 
+            width: 340px;
+            min-width: 300px;
+            background: white;
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: calc(100vh - 140px);
+            overflow-y: auto;
+        }
+
+        .instructions { 
+            background: #f5f5f7;
+            border-left: 3px solid #2c3e50;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            line-height: 1.5;
+        }
+
+        .instructions b {
+            color: #1d1d1f;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+
+        .instructions ol {
+            margin-left: 18px;
+            margin-top: 6px;
+        }
+
+        .instructions li {
+            margin-bottom: 4px;
+            color: #6e6e73;
+        }
+
+        .btn { 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            padding: 9px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-danger { 
+            background: #f5f5f7;
+            color: #1d1d1f;
+            border: 1px solid #e5e5e7;
+        }
+
+        .btn-danger:hover {
+            background: #e8e8ed;
+            border-color: #d2d2d7;
+        }
+
+        .btn-success { 
+            background: #2c3e50;
+            color: white;
+            font-size: 0.9rem;
+            padding: 10px 18px;
+        }
+
+        .btn-success:hover {
+            background: #1a252f;
+        }
+
+        .section-divider {
+            height: 1px;
+            background: #e5e5e7;
+            margin: 4px 0;
+        }
+
+        .zone-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .zone-header h3 {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+
+        .zone-count {
+            background: #2c3e50;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .zone-list { 
+            max-height: 300px;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            padding-right: 4px;
+        }
+
+        .zone-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .zone-list::-webkit-scrollbar-track {
+            background: #f5f5f7;
+            border-radius: 10px;
+        }
+
+        .zone-list::-webkit-scrollbar-thumb {
+            background: #d2d2d7;
+            border-radius: 10px;
+        }
+
+        .zone-list::-webkit-scrollbar-thumb:hover {
+            background: #b8b8bd;
+        }
+
+        .zone-item { 
+            background: #f5f5f7;
+            padding: 8px 10px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .zone-item:hover {
+            background: #e8e8ed;
+            border-color: #d2d2d7;
+            transform: scale(1.02);
+        }
+
+        .zone-item span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+            color: #1d1d1f;
+            font-size: 0.8rem;
+        }
+
+        .zone-item i {
+            color: #2c3e50;
+            font-size: 0.9rem;
+        }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #6e6e73;
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 2px;
+            transition: all 0.2s ease;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .delete-btn:hover {
+            color: #ff3b30;
+            background: rgba(255, 59, 48, 0.1);
+        }
+
+        select { 
+            width: 100%;
+            padding: 11px 14px;
+            background: white;
+            color: #1d1d1f;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        select:hover {
+            border-color: #2c3e50;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #2c3e50;
+            box-shadow: 0 0 0 3px rgba(44, 62, 80, 0.1);
+        }
+
+        select option {
+            background: white;
+            color: #1d1d1f;
+            padding: 10px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 30px 16px;
+            color: #6e6e73;
+            grid-column: 1 / -1;
+        }
+
+        .empty-state i {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            opacity: 0.4;
+            color: #2c3e50;
+        }
+
+        .empty-state p {
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+
+        /* Modal personalizado */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            animation: slideUp 0.3s ease;
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .modal-icon {
+            font-size: 1.5rem;
+        }
+
+        .modal-icon.warning {
+            color: #ff9500;
+        }
+
+        .modal-icon.success {
+            color: #34c759;
+        }
+
+        .modal-icon.error {
+            color: #ff3b30;
+        }
+
+        .modal-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+
+        .modal-body {
+            color: #6e6e73;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .modal-btn-cancel {
+            background: #f5f5f7;
+            color: #1d1d1f;
+            border: 1px solid #d2d2d7;
+        }
+
+        .modal-btn-cancel:hover {
+            background: #e8e8ed;
+        }
+
+        .modal-btn-confirm {
+            background: #2c3e50;
+            color: white;
+        }
+
+        .modal-btn-confirm:hover {
+            background: #1a252f;
+        }
+
+        .modal-btn-confirm.danger {
+            background: #ff3b30;
+        }
+
+        .modal-btn-confirm.danger:hover {
+            background: #e6322a;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .container {
+                flex-direction: column;
+            }
+            .controls {
+                width: 100%;
+                max-width: 100%;
+            }
+            canvas {
+                max-height: 350px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .header {
+                margin-bottom: 16px;
+            }
+            
+            h1 {
+                font-size: 1.4rem;
+            }
+            
+            .subtitle {
+                font-size: 0.8rem;
+            }
+            
+            .canvas-container,
+            .controls {
+                padding: 12px;
+            }
+            
+            .controls {
+                min-width: unset;
+                max-height: none;
+            }
+            
+            canvas {
+                max-height: 280px;
+            }
+            
+            .btn {
+                padding: 8px 14px;
+                font-size: 0.8rem;
+            }
+            
+            .btn-success {
+                padding: 10px 16px;
+            }
+            
+            .zone-list {
+                max-height: 200px;
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.2rem;
+            }
+            
+            .container {
+                gap: 12px;
+            }
+            
+            canvas {
+                max-height: 220px;
+            }
+            
+            .instructions {
+                font-size: 0.75rem;
+                padding: 10px;
+            }
+            
+            .instructions ol {
+                margin-left: 14px;
+            }
+            
+            .modal {
+                padding: 20px;
+            }
+        }
     </style>
 </head>
 <body>
 
-    <h1>📐 ParkingEyes - Configurador de Zonas</h1>
+    <div class="header">
+        <div class="logo">
+            <h1>Parkintia</h1>
+        </div>
+        <p class="subtitle">Configurador Inteligente de Zonas de Estacionamiento</p>
+    </div>
 
     <div class="container">
         <div class="canvas-container">
-            <div style="margin-bottom: 15px;">
-                <label>Seleccionar Cámara para configurar:</label>
-                <select id="cameraSelect" onchange="changeCamera()">
+            <div class="camera-select-wrapper">
+                <label>
+                    <i class="fas fa-video"></i>
+                    Seleccionar Cámara para configurar:
+                </label>
+                <select id="cameraSelect" onchange="changeCamera()" title="Seleccionar cámara">
                     <option value="mobile">Cargando cámaras...</option>
                 </select>
             </div>
@@ -37,21 +583,59 @@
         </div>
 
         <div class="controls">
-            <p class="instructions">
-                <b>Instrucciones:</b><br>
-                1. Selecciona la cámara.<br>
-                2. Haz 4 clics para marcar un espacio.<br>
-                3. Repite para cada parqueadero.<br>
-                4. ¡No olvides Guardar!
-            </p>
+            <div class="instructions">
+                <b><i class="fas fa-info-circle"></i> Instrucciones:</b>
+                <ol>
+                    <li>Selecciona la cámara que deseas configurar</li>
+                    <li>Haz 4 clics en el canvas para marcar un espacio</li>
+                    <li>Repite el proceso para cada parqueadero</li>
+                    <li>¡No olvides guardar los cambios!</li>
+                </ol>
+            </div>
 
-            <button class="btn btn-danger" onclick="clearLastPoint()">Deshacer último punto</button>
-            <button class="btn btn-danger" onclick="deleteAllZones()">Borrar todas las zonas</button>
-            <hr>
-            <button class="btn btn-success" onclick="saveConfiguration()">💾 GUARDAR ZONAS</button>
+            <button class="btn btn-danger" onclick="clearLastPoint()">
+                <i class="fas fa-undo"></i>
+                Deshacer último punto
+            </button>
+            
+            <button class="btn btn-danger" onclick="deleteAllZones()">
+                <i class="fas fa-trash-alt"></i>
+                Borrar todas las zonas
+            </button>
+            
+            <div class="section-divider"></div>
+            
+            <button class="btn btn-success" onclick="saveConfiguration()">
+                <i class="fas fa-save"></i>
+                GUARDAR ZONAS
+            </button>
 
-            <h3>Zonas (<span id="zoneCount">0</span>)</h3>
-            <div class="zone-list" id="zoneList"></div>
+            <div class="zone-header">
+                <h3>
+                    <i class="fas fa-layer-group"></i>
+                    Zonas
+                </h3>
+                <span class="zone-count" id="zoneCount">0</span>
+            </div>
+            
+            <div class="zone-list" id="zoneList">
+                <div class="empty-state">
+                    <i class="fas fa-draw-polygon"></i>
+                    <p>No hay zonas configuradas.<br>Empieza dibujando en el canvas.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal personalizado -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <i class="modal-icon fas" id="modalIcon"></i>
+                <div class="modal-title" id="modalTitle"></div>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-actions" id="modalActions"></div>
         </div>
     </div>
 
@@ -66,8 +650,61 @@
         let currentPoints = [];
         let backgroundImage = new Image();
         let currentCameraId = 'cam-08';
-        let streamImage = new Image(); // Imagen para el stream
+        let streamImage = new Image();
         let isStreamLoaded = false;
+        let mousePos = { x: -1, y: -1 };
+        let isMouseOnCanvas = false;
+
+        // Sistema de modales personalizado
+        function showModal(type, title, message, actions = []) {
+            const overlay = document.getElementById('modalOverlay');
+            const modalIcon = document.getElementById('modalIcon');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+            const modalActions = document.getElementById('modalActions');
+
+            // Configurar icono según el tipo
+            modalIcon.className = 'modal-icon fas';
+            if (type === 'warning') {
+                modalIcon.classList.add('fa-exclamation-triangle', 'warning');
+            } else if (type === 'success') {
+                modalIcon.classList.add('fa-check-circle', 'success');
+            } else if (type === 'error') {
+                modalIcon.classList.add('fa-times-circle', 'error');
+            } else if (type === 'info') {
+                modalIcon.classList.add('fa-info-circle');
+                modalIcon.style.color = '#007aff';
+            }
+
+            modalTitle.textContent = title;
+            modalBody.textContent = message;
+
+            // Limpiar y crear botones de acción
+            modalActions.innerHTML = '';
+            actions.forEach(action => {
+                const btn = document.createElement('button');
+                btn.className = `modal-btn ${action.class || ''}`;
+                btn.textContent = action.text;
+                btn.onclick = () => {
+                    closeModal();
+                    if (action.callback) action.callback();
+                };
+                modalActions.appendChild(btn);
+            });
+
+            overlay.classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('active');
+        }
+
+        // Cerrar modal al hacer click fuera
+        document.getElementById('modalOverlay').addEventListener('click', (e) => {
+            if (e.target.id === 'modalOverlay') {
+                closeModal();
+            }
+        });
 
         async function changeCamera() {
             currentCameraId = cameraSelect.value;
@@ -109,7 +746,7 @@
                 ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
             }
             
-            // 2. Dibujar Zonas (Polígonos)
+            // 2. Dibujar Zonas guardadas (Polígonos)
             zones.forEach(zone => {
                 ctx.beginPath();
                 ctx.moveTo(zone.coordinates[0].x, zone.coordinates[0].y);
@@ -120,20 +757,120 @@
                 ctx.stroke();
                 ctx.fillStyle = 'rgba(0, 255, 0, 0.2)';
                 ctx.fill();
-                ctx.fillStyle = 'white';
-                ctx.fillText(zone.spaceNumber, zone.coordinates[0].x, zone.coordinates[0].y - 5);
+                
+                // Calcular centro del polígono para mostrar el número
+                const centerX = zone.coordinates.reduce((sum, p) => sum + p.x, 0) / zone.coordinates.length;
+                const centerY = zone.coordinates.reduce((sum, p) => sum + p.y, 0) / zone.coordinates.length;
+                
+                // Fondo del número
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, 14, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fill();
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Número del espacio
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 12px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(zone.spaceNumber, centerX, centerY);
             });
 
             // 3. Dibujar puntos actuales (si estoy dibujando)
             if (currentPoints.length > 0) {
+                // Dibujar líneas conectando los puntos
                 ctx.beginPath();
                 ctx.moveTo(currentPoints[0].x, currentPoints[0].y);
                 currentPoints.forEach(p => ctx.lineTo(p.x, p.y));
-                ctx.strokeStyle = 'yellow';
+                
+                // Si hay 3 puntos, mostrar preview de cómo quedará cerrado
+                if (currentPoints.length === 3) {
+                    ctx.lineTo(currentPoints[0].x, currentPoints[0].y);
+                    ctx.fillStyle = 'rgba(255, 200, 0, 0.15)';
+                    ctx.fill();
+                }
+                
+                ctx.strokeStyle = '#ffd700';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
                 ctx.stroke();
-                currentPoints.forEach(p => {
-                    ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fillStyle = 'yellow'; ctx.fill();
+                ctx.setLineDash([]);
+                
+                // Dibujar puntos con números
+                currentPoints.forEach((p, index) => {
+                    // Círculo exterior
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 12, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ffd700';
+                    ctx.fill();
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // Número del punto
+                    ctx.fillStyle = '#000000';
+                    ctx.font = 'bold 12px Inter, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(index + 1, p.x, p.y);
                 });
+                
+                // Indicador de cuántos puntos faltan
+                const remaining = 4 - currentPoints.length;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(10, 10, 180, 30);
+                ctx.fillStyle = '#ffd700';
+                ctx.font = 'bold 14px Inter, sans-serif';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`Faltan ${remaining} punto${remaining !== 1 ? 's' : ''}`, 20, 25);
+            }
+
+            // 4. Dibujar cursor personalizado (crosshair preciso)
+            if (isMouseOnCanvas && mousePos.x >= 0 && mousePos.y >= 0) {
+                // Línea vertical
+                ctx.beginPath();
+                ctx.moveTo(mousePos.x, 0);
+                ctx.lineTo(mousePos.x, canvas.height);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([4, 4]);
+                ctx.stroke();
+                
+                // Línea horizontal
+                ctx.beginPath();
+                ctx.moveTo(0, mousePos.y);
+                ctx.lineTo(canvas.width, mousePos.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                // Círculo central del cursor
+                ctx.beginPath();
+                ctx.arc(mousePos.x, mousePos.y, 8, 0, Math.PI * 2);
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.arc(mousePos.x, mousePos.y, 3, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffd700';
+                ctx.fill();
+                
+                // Si hay puntos, mostrar línea hacia el siguiente punto
+                if (currentPoints.length > 0 && currentPoints.length < 4) {
+                    const lastPoint = currentPoints[currentPoints.length - 1];
+                    ctx.beginPath();
+                    ctx.moveTo(lastPoint.x, lastPoint.y);
+                    ctx.lineTo(mousePos.x, mousePos.y);
+                    ctx.strokeStyle = 'rgba(255, 215, 0, 0.5)';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 5]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
             }
             
             requestAnimationFrame(gameLoop);
@@ -141,13 +878,60 @@
 
         canvas.addEventListener('mousedown', (e) => {
             const rect = canvas.getBoundingClientRect();
-            const x = Math.round(e.clientX - rect.left);
-            const y = Math.round(e.clientY - rect.top);
+            
+            // Calcular la escala entre el tamaño real del canvas y el tamaño mostrado
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            // Aplicar la escala a las coordenadas del mouse
+            const x = Math.round((e.clientX - rect.left) * scaleX);
+            const y = Math.round((e.clientY - rect.top) * scaleY);
+            
             currentPoints.push({x, y});
             if (currentPoints.length === 4) {
                 addZone(currentPoints);
                 currentPoints = [];
             }
+        });
+
+        // Soporte para dispositivos táctiles
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            const x = Math.round((touch.clientX - rect.left) * scaleX);
+            const y = Math.round((touch.clientY - rect.top) * scaleY);
+            
+            currentPoints.push({x, y});
+            if (currentPoints.length === 4) {
+                addZone(currentPoints);
+                currentPoints = [];
+            }
+        });
+
+        // Rastrear posición del mouse para mostrar cursor personalizado
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            mousePos.x = Math.round((e.clientX - rect.left) * scaleX);
+            mousePos.y = Math.round((e.clientY - rect.top) * scaleY);
+            isMouseOnCanvas = true;
+        });
+
+        canvas.addEventListener('mouseenter', () => {
+            isMouseOnCanvas = true;
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            isMouseOnCanvas = false;
+            mousePos.x = -1;
+            mousePos.y = -1;
         });
 
         function addZone(points) {
@@ -162,10 +946,29 @@
 
         function updateZoneList() {
             zoneListEl.innerHTML = '';
+            
+            if (zones.length === 0) {
+                zoneListEl.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-draw-polygon"></i>
+                        <p>No hay zonas configuradas.<br>Empieza dibujando en el canvas.</p>
+                    </div>
+                `;
+                return;
+            }
+            
             zones.forEach((zone, index) => {
                 const div = document.createElement('div');
                 div.className = 'zone-item';
-                div.innerHTML = `<span>🅿️ Espacio ${zone.spaceNumber}</span><button style="background:none;border:none;color:red;cursor:pointer" onclick="deleteZone(${index})">❌</button>`;
+                div.innerHTML = `
+                    <span>
+                        <i class="fas fa-parking"></i>
+                        Espacio ${zone.spaceNumber}
+                    </span>
+                    <button class="delete-btn" onclick="deleteZone(${index})" title="Eliminar zona">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
                 zoneListEl.appendChild(div);
             });
             zoneCountEl.innerText = zones.length;
@@ -178,13 +981,39 @@
         }
 
         function deleteAllZones() {
-            if(confirm("¿Borrar todo?")) { zones = []; currentPoints = []; updateZoneList(); }
+            showModal('warning', '¿Estás seguro?', 'Esta acción eliminará todas las zonas configuradas y no se puede deshacer.', [
+                {
+                    text: 'Cancelar',
+                    class: 'modal-btn-cancel'
+                },
+                {
+                    text: 'Eliminar Todo',
+                    class: 'modal-btn-confirm danger',
+                    callback: () => {
+                        zones = []; 
+                        currentPoints = []; 
+                        updateZoneList();
+                    }
+                }
+            ]);
         }
 
-        function clearLastPoint() { currentPoints.pop(); }
+        function clearLastPoint() { 
+            if (currentPoints.length > 0) {
+                currentPoints.pop();
+            }
+        }
 
         async function saveConfiguration() {
-            if (zones.length === 0) { alert("Dibuja al menos una zona."); return; }
+            if (zones.length === 0) { 
+                showModal('warning', 'No hay zonas', 'Debes dibujar al menos una zona antes de guardar.', [
+                    {
+                        text: 'Entendido',
+                        class: 'modal-btn-confirm'
+                    }
+                ]);
+                return; 
+            }
             try {
                 const response = await fetch('/api/zones/sync', {
                     method: 'POST',
@@ -192,8 +1021,29 @@
                     body: JSON.stringify({ cameraId: currentCameraId, zones: zones })
                 });
                 const res = await response.json();
-                if (res.success) alert("✅ Zonas guardadas para " + currentCameraId);
-            } catch (e) { alert("❌ Error: " + e); }
+                if (res.success) {
+                    showModal('success', 'Guardado Exitoso', `Las zonas se han guardado correctamente para ${currentCameraId}.`, [
+                        {
+                            text: 'Aceptar',
+                            class: 'modal-btn-confirm'
+                        }
+                    ]);
+                } else {
+                    showModal('error', 'Error al Guardar', res.message || 'Ocurrió un error al guardar las zonas.', [
+                        {
+                            text: 'Cerrar',
+                            class: 'modal-btn-confirm'
+                        }
+                    ]);
+                }
+            } catch (e) { 
+                showModal('error', 'Error de Conexión', 'No se pudo conectar con el servidor. Verifica tu conexión.', [
+                    {
+                        text: 'Cerrar',
+                        class: 'modal-btn-confirm'
+                    }
+                ]);
+            }
         }
 
         // NO NECESITAMOS draw() separado, todo está en gameLoop
@@ -207,7 +1057,7 @@
                     data.cameras.forEach(cam => {
                         const option = document.createElement('option');
                         option.value = cam.id;
-                        option.text = `${cam.id} (${cam.url === 0 ? 'Webcam USB' : 'IP Camera'})`;
+                        option.text = cam.id;
                         if (cam.id === 'mobile') option.selected = true; 
                         cameraSelect.appendChild(option);
                     });

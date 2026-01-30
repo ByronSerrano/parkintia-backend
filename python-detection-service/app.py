@@ -20,13 +20,13 @@ CORS(app)
 # ==========================================
 # CONFIGURACIÓN DE CÁMARAS
 # ==========================================
-DEFAULT_CAMERA_IP = os.environ.get("CAMERA_IP", "192.168.209.25")
+DEFAULT_CAMERA_IP = os.environ.get("CAMERA_IP", "192.168.216.232")
 DEFAULT_USER = os.environ.get("CAMERA_USER", "jdaza")
 DEFAULT_PASS = os.environ.get("CAMERA_PASS", "Jdaza2026.")
 
 # Diccionario de cámaras disponibles
 # Si MOBILE_CAMERA_URL es un número (ej "0"), se usará como webcam USB/Local
-mobile_url = os.environ.get("MOBILE_CAMERA_URL", "http://192.168.100.165:8081/video") 
+mobile_url = os.environ.get("MOBILE_CAMERA_URL", "http://192.168.216.232:8081/video") 
 
 CAMERAS = {
     "mobile": mobile_url, 
